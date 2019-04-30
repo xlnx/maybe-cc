@@ -1,0 +1,16 @@
+[package]
+name = "my"
+version = "0.1.0"
+authors = ["KoishiChan <qwq@koishi.top>"]
+edition = "2018"
+
+[dependencies]
+wasm-bindgen = { version = "0.2.42", features = ["serde-serialize"] }
+serde = "1.0.90"
+serde_derive = "1.0.90"
+wbg-rand = "0.4.1"
+rand = "0.6.5"
+proc-macro2 = "^0.4.6"
+quote = "^0.6.3"
+syn = "^0.15.1"
+myrpg = { path = "../myrpg" }
