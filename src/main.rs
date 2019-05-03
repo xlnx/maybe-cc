@@ -1,17 +1,24 @@
-use myrpg::{ast::*, *};
+extern crate clap;
+
+use clap::{App, Arg};
+
+use myrpg::{ast::*, symbol::*, *};
 
 use std::fs::File;
 use std::io::prelude::*;
 
 lang! {
 
-    Name = IfExpr
+    Name = C
     ValueType = i32
 
     ;;
 
-    Id => r"[a-zA-Z_]\w*",
-    Number => r"[0-9]+"
+    Id => r"[a-zA-Z_]\w*\b",
+        // => |tok: &mut Token| {
+        //     tok.symbol = Symbol::from("Number")
+        // },
+    Number => r"[0-9]+\b"
 
     ;;
 
@@ -82,6 +89,51 @@ lang! {
     ],
     Cond => [
         Expr0
+    ],
+
+    // AddressSpaceQualifier => [
+    //     "global",
+    //     "__global",
+    //     "local",
+    //     "__local",
+    //     "constant",
+    //     "__constant",
+    //     "private",
+    //     "__private"
+    // ],
+    // AccessQualifiers => [
+    //     "read_only",
+    //     "__read_only",
+    //     "write_only",
+    //     "__write_only",
+    //     "read_write",
+    //     "__read_write"
+    // ],
+    // FunctionQualifiers => [
+    //     "kernel",
+    //     "__kernel"
+    // ],
+    // OptionalAttributeQualifiers => [
+    //     "__attribute__"
+    // ],
+    // StorageClassSpecifiers => [
+    //     "extern",
+    //     "static"
+    // ],
+
+    NoptrDeclarator => [
+        Id,
+        NoptrDeclarator "[" Qualifiers Expr0 "]",
+        "(" Declarator ")",
+        NoptrDeclarator "[" Qualifiers "]",
+        NoptrDeclarator "[" Qualifiers "]"
+    ],
+    PtrDeclarator => [
+        "*" Qualifiers Declarator
+    ],
+    Declarator => [
+        PtrDeclarator,
+        NoptrDeclarator
     ],
 
     Expr0 => [
@@ -183,14 +235,53 @@ lang! {
 
 }
 
-fn main() {
-    let parser = LRParser::<IfExpr>::new();
-    let mut file = File::open("a.glsl").unwrap();
+fn main() -> Result<(), std::io::Error> {
+
+    let matches = App::new("my")
+        .version("0.1.0")
+        .author("KoishiChan")
+        .arg(
+            Arg::with_name("output")
+                .help("output file")
+                .takes_value(true)
+                .short("o")
+                .long("output")
+                .multiple(false)
+                // .required(true),
+        )
+        .arg(
+            Arg::with_name("input")
+                .help("input file")
+                .index(1)
+        )
+        .get_matches();
+
+    let mut default_out_file = String::from("a.ast.json");
+    let mut in_file: Box<Read> = if let Some(input) = matches.value_of("input") {
+        default_out_file = format!(
+            "{}.ast.json",
+            &input[..input.rfind('.').unwrap_or(input.len())]
+        );
+        Box::new(File::open(input)?)
+    } else {
+        Box::new(std::io::stdin())
+    };
+    let out_file = matches
+        .value_of("output")
+        .unwrap_or(default_out_file.as_str());
+
+    let parser = LRParser::<C>::new();
+
     let mut contents = String::new();
-    file.read_to_string(&mut contents);
+    in_file.read_to_string(&mut contents)?;
 
     match parser.parse(contents.as_str()) {
-        Ok(val) => println!("{:?}", val),
+        Ok(ast) => {
+            let mut out = File::create(out_file)?;
+            out.write(ast.to_json_pretty().as_bytes())?;
+        }
         Err(err) => println!("{:?}", err),
     }
+
+    Ok(())
 }

@@ -1,0 +1,51 @@
+{
+  "type": "S",
+  "children": [
+    {
+      "type": "Glob",
+      "children": [
+        {
+          "type": "Function",
+          "children": [
+            {
+              "type": "Type",
+              "children": [
+                ["\"int\"","int"]
+              ]
+            },
+            ["Id","main"],
+            ["\"(\"","("],
+            {
+              "type": "NamedParams",
+              "children": [
+                {
+                  "type": "Type",
+                  "children": [
+                    ["\"int\"","int"]
+                  ]
+                },
+                ["Id","a"],
+                {
+                  "type": "NamedParamsRight",
+                  "children": []
+                }
+              ]
+            },
+            ["\")\"",")"],
+            {
+              "type": "Block",
+              "children": [
+                ["\"{\"","{"],
+                {
+                  "type": "Stmts",
+                  "children": []
+                },
+                ["\"}\"","}"]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
