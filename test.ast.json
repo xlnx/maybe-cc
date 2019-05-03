@@ -2,7 +2,7 @@
   "type": "S",
   "children": [
     {
-      "type": "Glob",
+      "type": "Global",
       "children": [
         {
           "type": "Function",
@@ -10,37 +10,53 @@
             {
               "type": "Type",
               "children": [
-                ["\"int\"","int"]
+                ["\"int\"","int",[0,0]]
               ]
             },
-            ["Id","main"],
-            ["\"(\"","("],
+            ["Id","main",[0,4]],
+            ["\"(\"","(",[0,8]],
             {
               "type": "NamedParams",
-              "children": [
-                {
-                  "type": "Type",
-                  "children": [
-                    ["\"int\"","int"]
-                  ]
-                },
-                ["Id","a"],
-                {
-                  "type": "NamedParamsRight",
-                  "children": []
-                }
-              ]
+              "children": []
             },
-            ["\")\"",")"],
+            ["\")\"",")",[0,9]],
             {
               "type": "Block",
               "children": [
-                ["\"{\"","{"],
+                ["\"{\"","{",[1,0]],
                 {
                   "type": "Stmts",
-                  "children": []
+                  "children": [
+                    {
+                      "type": "Stmts",
+                      "children": []
+                    },
+                    {
+                      "type": "Stmt",
+                      "children": [
+                        {
+                          "type": "Decl",
+                          "children": [
+                            {
+                              "type": "Type",
+                              "children": [
+                                ["\"int\"","int",[2,1]]
+                              ]
+                            },
+                            ["Id","a",[2,5]],
+                            {
+                              "type": "DeclRight",
+                              "children": [
+                                ["\";\"",";",[2,6]]
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
                 },
-                ["\"}\"","}"]
+                ["\"}\"","}",[3,0]]
               ]
             }
           ]

@@ -2,10 +2,13 @@ extern crate clap;
 
 use clap::{App, Arg};
 
-use myrpg::{ast::*, symbol::*, *};
+use myrpg::{ast::*, symbol::*, log::*, *};
 
 use std::fs::File;
 use std::io::prelude::*;
+
+mod prep;
+use prep::Preprocessor;
 
 lang! {
 
@@ -23,12 +26,9 @@ lang! {
     ;;
 
     S => [
-        Glob => |glob| -> _ {
-            println!("{:?}", glob);
-            None
-        }
+        Global
     ],
-    Glob => [
+    Global => [
         Function
     ],
     Type => [
@@ -235,7 +235,17 @@ lang! {
 
 }
 
+macro_rules! compile_error {
+    ($err: expr) => {{
+        eprint!("{:?}", $err);
+        ::std::process::exit(1);
+    }};
+}
+
 fn main() -> Result<(), std::io::Error> {
+
+    let mut stdin = std::io::stdin();
+    let mut stderr = std::io::stderr();
 
     let matches = App::new("my")
         .version("0.1.0")
@@ -264,23 +274,40 @@ fn main() -> Result<(), std::io::Error> {
         );
         Box::new(File::open(input)?)
     } else {
-        Box::new(std::io::stdin())
+        Box::new(stdin)
     };
     let out_file = matches
         .value_of("output")
         .unwrap_or(default_out_file.as_str());
 
-    let parser = LRParser::<C>::new();
+    let mut logger = Logger::from(&mut stderr);
 
     let mut contents = String::new();
     in_file.read_to_string(&mut contents)?;
+
+    let preprocessor = Preprocessor::new();
+
+    match preprocessor.parse(contents.as_str()) {
+        Ok(preprocessed) => contents = preprocessed,
+        Err(err) => {
+            // logger.log(&err.into());
+            std::process::exit(1);
+        }
+    }
+
+    let parser = LRParser::<C>::new();
 
     match parser.parse(contents.as_str()) {
         Ok(ast) => {
             let mut out = File::create(out_file)?;
             out.write(ast.to_json_pretty().as_bytes())?;
         }
-        Err(err) => println!("{:?}", err),
+        Err(err) => {
+            let err = err.into();
+            logger.log(&err);
+            logger.log(&err);
+            std::process::exit(1);
+        }
     }
 
     Ok(())
