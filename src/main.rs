@@ -2,7 +2,7 @@ extern crate clap;
 
 use clap::{App, Arg};
 
-use myrpg::{ast::*, symbol::*, log::*, *};
+use myrpg::{ast::*, log::*, symbol::*, *};
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -26,10 +26,10 @@ lang! {
     ;;
 
     S => [
-        Global
+        Global |@flatten|
     ],
     Global => [
-        Function
+        Function |@flatten|
     ],
     Type => [
         "int", "void"
@@ -41,8 +41,8 @@ lang! {
         "{" Stmts "}"
     ],
     Stmts => [
-        Stmts Stmt,
-        _
+        Stmts Stmt |@flatten|,
+        _ |@flatten|
     ],
     Stmt => [
         IfStmt,
@@ -88,7 +88,7 @@ lang! {
         _
     ],
     Cond => [
-        Expr0
+        Expr0 |@flatten|
     ],
 
     // AddressSpaceQualifier => [
@@ -138,7 +138,7 @@ lang! {
 
     Expr0 => [
         Expr0 "," Expr1,
-        Expr1
+        Expr1 |@flatten|
     ],
     Expr1 => [
         Expr2 "=" Expr1,
@@ -152,63 +152,63 @@ lang! {
         Expr2 "&=" Expr1,
         Expr2 "^=" Expr1,
         Expr2 "|=" Expr1,
-        Expr2
+        Expr2 |@flatten|
     ],
     Expr2 => [
         Expr3 "?" Expr2 ":" Expr2,
-        Expr3
+        Expr3 |@flatten|
     ],
     Expr3 => [
         Expr3 "||" Expr4,
-        Expr4
+        Expr4 |@flatten|
     ],
     Expr4 => [
         Expr4 "^^" Expr5,
-        Expr5
+        Expr5 |@flatten|
     ],
     Expr5 => [
         Expr5 "&&" Expr6,
-        Expr6
+        Expr6 |@flatten|
     ],
     Expr6 => [
         Expr6 "|" Expr7,
-        Expr7
+        Expr7 |@flatten|
     ],
     Expr7 => [
         Expr7 "^" Expr8,
-        Expr8
+        Expr8 |@flatten|
     ],
     Expr8 => [
         Expr8 "&" Expr9,
-        Expr9
+        Expr9 |@flatten|
     ],
     Expr9 => [
         Expr9 "==" Expr10,
         Expr9 "!=" Expr10,
-        Expr10
+        Expr10 |@flatten|
     ],
     Expr10 => [
         Expr10 "<" Expr11,
         Expr10 "<=" Expr11,
         Expr10 ">" Expr11,
         Expr10 ">=" Expr11,
-        Expr11
+        Expr11 |@flatten|
     ],
     Expr11 => [
         Expr11 "<<" Expr12,
         Expr11 ">>" Expr12,
-        Expr12
+        Expr12 |@flatten|
     ],
     Expr12 => [
         Expr12 "+" Expr13,
         Expr12 "-" Expr13,
-        Expr13
+        Expr13 |@flatten|
     ],
     Expr13 => [
         Expr13 "*" Expr14,
         Expr13 "/" Expr14,
         Expr13 "%" Expr14,
-        Expr14
+        Expr14 |@flatten|
     ],
     Expr14 => [
         "++" Expr14,
@@ -217,7 +217,7 @@ lang! {
         "-" Expr14,
         "~" Expr14,
         "!" Expr14,
-        Expr15
+        Expr15 |@flatten|
     ],
     Expr15 => [
         Expr15 "++",
@@ -225,7 +225,7 @@ lang! {
         Expr15 "." Id,
         Expr15 "(" UnnamedParams ")",
         Expr15 "[" Expr0 "]",
-        Expr16
+        Expr16 |@flatten|
     ],
     Expr16 => [
         "(" Expr0 ")",
@@ -235,16 +235,9 @@ lang! {
 
 }
 
-macro_rules! compile_error {
-    ($err: expr) => {{
-        eprint!("{:?}", $err);
-        ::std::process::exit(1);
-    }};
-}
-
 fn main() -> Result<(), std::io::Error> {
 
-    let mut stdin = std::io::stdin();
+    let stdin = std::io::stdin();
     let mut stderr = std::io::stderr();
 
     let matches = App::new("my")
@@ -281,6 +274,7 @@ fn main() -> Result<(), std::io::Error> {
         .unwrap_or(default_out_file.as_str());
 
     let mut logger = Logger::from(&mut stderr);
+    let mut error = false;
 
     let mut contents = String::new();
     in_file.read_to_string(&mut contents)?;
@@ -290,9 +284,16 @@ fn main() -> Result<(), std::io::Error> {
     match preprocessor.parse(contents.as_str()) {
         Ok(preprocessed) => contents = preprocessed,
         Err(err) => {
-            // logger.log(&err.into());
-            std::process::exit(1);
+            let err = err.into();
+            logger.log(&err);
+            if err.is_error() {
+                error = true;
+            }
         }
+    }
+
+    if error {
+        std::process::exit(1);
     }
 
     let parser = LRParser::<C>::new();
@@ -305,9 +306,14 @@ fn main() -> Result<(), std::io::Error> {
         Err(err) => {
             let err = err.into();
             logger.log(&err);
-            logger.log(&err);
-            std::process::exit(1);
+            if err.is_error() {
+                error = true;
+            }
         }
+    }
+
+    if error {
+        std::process::exit(1);
     }
 
     Ok(())

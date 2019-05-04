@@ -1,5 +1,6 @@
-use std::fs::File;
+use myrpg::log::{Item, Severity, SourceFileLocation};
 use std::io::prelude::*;
+
 
 pub struct Preprocessor {}
 
@@ -14,9 +15,18 @@ impl PreprocessError {
 	}
 }
 
-impl std::fmt::Debug for PreprocessError {
-	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		write!(f, "{}", self.as_string())
+impl<'a> std::convert::From<PreprocessError> for Item<'a> {
+	fn from(err: PreprocessError) -> Self {
+		Item {
+			level: Severity::Warning,
+			location: SourceFileLocation {
+				name: "asd".into(),
+				line: "ASDASDASD\n",
+				from: (0, 0),
+				to: (0, 9),
+			},
+			message: "wtf warning message".into(),
+		}
 	}
 }
 
