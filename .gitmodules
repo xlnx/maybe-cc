@@ -1,3 +1,6 @@
 [submodule "ir-gen/jsoncpp"]
 	path = ir-gen/jsoncpp
 	url = https://github.com/xlnx/old-jsoncpp.git
+[submodule "myrpg"]
+	path = myrpg
+	url = https://github.com/xlnx/myrpg.git

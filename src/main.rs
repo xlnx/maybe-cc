@@ -305,7 +305,8 @@ fn main() -> Result<(), std::io::Error> {
     /* preprocessing */
     let preprocessor = Preprocessor::new();
 
-    contents = preprocessor.parse(contents.as_str(), &mut logger)
+    contents = preprocessor
+        .parse(contents.as_str(), &mut logger)
         .unwrap_or_else(|_| {
             std::process::exit(1);
         });
@@ -313,7 +314,8 @@ fn main() -> Result<(), std::io::Error> {
     /* parsing */
     let parser = LRParser::<C>::new();
 
-    let ast = parser.parse(contents.as_str(), &mut logger)
+    let ast = parser
+        .parse(contents.as_str(), &mut logger)
         .unwrap_or_else(|_| {
             std::process::exit(1);
         });

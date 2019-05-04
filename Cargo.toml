@@ -16,5 +16,5 @@ rand = "0.6.5"
 proc-macro2 = "^0.4.6"
 quote = "^0.6.3"
 syn = "^0.15.1"
-myrpg = { path = "../myrpg" }
+myrpg = { path = "myrpg" }
 clap = "2.33.0"                   # A simple to use, efficient, and full-featured Command Line Argument Parser 

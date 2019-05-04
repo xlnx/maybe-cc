@@ -1,6 +1,6 @@
 use std::io::prelude::*;
 
-use myrpg::log::{Logger, Item, Severity, SourceFileLocation};
+use myrpg::log::{Item, Logger, Severity, SourceFileLocation};
 
 pub struct Preprocessor {}
 
