@@ -1,0 +1,3 @@
+[submodule "ir-gen/jsoncpp"]
+	path = ir-gen/jsoncpp
+	url = https://github.com/xlnx/old-jsoncpp.git
