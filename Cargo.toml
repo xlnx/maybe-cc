@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["KoishiChan <qwq@koishi.top>"]
 edition = "2018"
 
+[build-dependencies]
+cmake = "0.1.39"                          # A build dependency for running `cmake` to build a native library 
+
 [dependencies]
 wasm-bindgen = { version = "0.2.42", features = ["serde-serialize"] }
 serde = "1.0.90"
