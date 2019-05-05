@@ -6,7 +6,6 @@ use std::os::raw::c_char;
 const MSG_TYPE_ERROR: i32 = 0;
 const MSG_TYPE_WARNING: i32 = 1;
 
-/* ir-generation */
 #[repr(C)]
 struct Msg {
 	msg: *const c_char,

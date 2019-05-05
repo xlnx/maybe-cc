@@ -107,6 +107,7 @@ fn main() -> Result<(), std::io::Error> {
         std::process::exit(0);
     }
 
+    /* ir-generation */
     let ir = ir_gen(&ast, &mut logger).unwrap_or_else(error_exit!());
 
     if target == "ir" {
