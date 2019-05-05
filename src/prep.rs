@@ -19,12 +19,12 @@ impl<'a> std::convert::From<PreprocessError> for Item<'a> {
     fn from(err: PreprocessError) -> Self {
         Item {
             level: Severity::Warning,
-            location: SourceFileLocation {
+            location: Some(SourceFileLocation {
                 name: "asd".into(),
                 line: "ASDASDASD\n",
                 from: (0, 0),
                 to: (0, 9),
-            },
+            }),
             message: "wtf warning message".into(),
         }
     }

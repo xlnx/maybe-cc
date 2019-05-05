@@ -12,15 +12,21 @@ namespace ffi
 {
 #define MSG_LIST_MIN_CAP 16
 
+constexpr int MSG_TYPE_ERROR = 0;
+constexpr int MSG_TYPE_WARNING = 1;
+
 struct Msg final
 {
-	std::size_t pos[ 4 ] = {};
 	char *msg;
+	int type, has_loc;
+	std::size_t pos[ 4 ] = {};
 
 public:
-	Msg( const Json::Value &cxx_pos,
-		 const std::string &cxx_msg ) :
-	  msg( (char *)malloc( sizeof( char ) * cxx_msg.length() + 1 ) )
+	Msg( int type, const std::string &cxx_msg,
+		 const Json::Value &cxx_pos ) :
+	  msg( (char *)malloc( sizeof( char ) * cxx_msg.length() + 1 ) ),
+	  type( type ),
+	  has_loc( true )
 	{
 		memcpy( msg, cxx_msg.c_str(), cxx_msg.length() + 1 );
 		assert( cxx_pos.size() == 4 );
@@ -28,6 +34,13 @@ public:
 		{
 			pos[ i ] = cxx_pos[ i ].asUInt64();
 		}
+	}
+	Msg( int type, const std::string &cxx_msg ) :
+	  msg( (char *)malloc( sizeof( char ) * cxx_msg.length() + 1 ) ),
+	  type( type ),
+	  has_loc( false )
+	{
+		memcpy( msg, cxx_msg.c_str(), cxx_msg.length() + 1 );
 	}
 	~Msg()
 	{
