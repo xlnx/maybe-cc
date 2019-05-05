@@ -32,8 +32,9 @@ fn main() {
     println!("cargo:rustc-link-lib=static=ir-gen");
 
     if llvm_libs.len() > 1 {
-        println!("cargo:rustc-link-lib=static=LLVMCore");
-        println!("cargo:rustc-link-lib=static=LLVMSupport");
+        for sta_lib in llvm_libs.iter() {
+            println!("cargo:rustc-link-lib=static={}", sta_lib);
+        }
     } else {
         for dyn_lib in llvm_libs.iter() {
             println!("cargo:rustc-link-lib={}", dyn_lib);
@@ -43,10 +44,12 @@ fn main() {
     let target = env::var("TARGET").unwrap();
     if target.contains("apple") {
         println!("cargo:rustc-link-lib=dylib=c++");
-    } else if target.contains("linux") {
+    } else 
+    // if target.contains("linux") 
+    {
         println!("cargo:rustc-link-lib=dylib=stdc++");
-    } else {
-        println!("cargo:warning={}", "windows is not a supported platform.");
-        unimplemented!();
+    // } else {
+    //     println!("cargo:warning={}", "windows is not a supported platform.");
+    //     unimplemented!();
     }
 }
