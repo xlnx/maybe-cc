@@ -1,5 +1,11 @@
 #[allow(unused_imports)]
 use myrpg::{ast::*, symbol::*, *};
+use regex::Regex;
+
+lazy_static! {
+	static ref SOURCE_MAP: Regex = 
+		Regex::new(r"#\s+(\S+)\s+(\S+)(?:\s+(\S+))?(?:\s+(\S+))?(?:\s+(\S+))?(?:\s+(\S+))?\s*").unwrap();
+}
 
 lang! {
 
@@ -12,7 +18,12 @@ lang! {
 		// => |tok: &mut Token| {
 		//     tok.symbol = Symbol::from("Number")
 		// },
-	Number => r"[0-9]+\b"
+	Number => r"[0-9]+\b",
+	SourceMap => r"\n(#[^\n]*)\n" => |tok| -> bool {
+		let caps = SOURCE_MAP.captures(tok.val);
+		println!("{:?}", caps);
+		false
+	}
 
 	;;
 

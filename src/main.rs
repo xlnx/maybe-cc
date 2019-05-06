@@ -1,5 +1,8 @@
 extern crate clap;
 
+#[macro_use]
+extern crate lazy_static;
+
 use clap::{App, Arg};
 
 #[allow(unused_imports)]
@@ -90,9 +93,9 @@ fn main() -> Result<(), std::io::Error> {
     /* preprocessing */
     let preprocessor = Preprocessor::new();
 
-    contents = preprocessor
+    contents = String::from("\n") + preprocessor
         .parse(contents.as_str(), &mut logger)
-        .unwrap_or_else(error_exit!());
+        .unwrap_or_else(error_exit!()).as_str() + "\n";
 
     /* parsing */
     let parser = LRParser::<C>::new();
