@@ -4,3 +4,6 @@
 [submodule "cmake-rs"]
 	path = cmake-rs
 	url = https://github.com/Devolutions/CMakeRust.git
+[submodule "ir-gen/jsoncpp"]
+	path = ir-gen/jsoncpp
+	url = https://github.com/xlnx/old-jsoncpp.git
