@@ -162,11 +162,7 @@ lang! {
         Expr3 |@flatten|
     ],
     Expr3 => [
-        Expr3 "||" Expr4,
-        Expr4 |@flatten|
-    ],
-    Expr4 => [
-        Expr4 "^^" Expr5,
+        Expr3 "||" Expr5,
         Expr5 |@flatten|
     ],
     Expr5 => [

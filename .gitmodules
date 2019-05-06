@@ -7,3 +7,6 @@
 [submodule "ir-gen/jsoncpp"]
 	path = ir-gen/jsoncpp
 	url = https://github.com/xlnx/old-jsoncpp.git
+[submodule "ir-gen/variant-lite"]
+	path = ir-gen/variant-lite
+	url = https://github.com/KseeleK/variant-lite-mirror.git

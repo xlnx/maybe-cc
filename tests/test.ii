@@ -1,5 +1,2 @@
 ; ModuleID = 'asd'
-
-define double @main() {
-entry:
-}
+source_filename = "asd"

@@ -21,4 +21,4 @@ else()
 endif()
 
 target_link_libraries(mcc ir-gen)
-target_link_libraries(mcc LLVMCore LLVMSupport)
+target_link_libraries(mcc LLVM-6.0)

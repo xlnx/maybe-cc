@@ -11,6 +11,7 @@ add_definitions(${LLVM_DEFINITIONS})
 include_directories(
 	./include
 	./jsoncpp/include
+	./variant-lite
 )
 
 file(GLOB SOURCE 
