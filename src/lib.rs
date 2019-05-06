@@ -26,7 +26,7 @@ macro_rules! error_exit {
     };
 }
 
-fn main() -> Result<(), std::io::Error> {
+fn main_rs() -> Result<(), std::io::Error> {
     let stdin = std::io::stdin();
     let mut stderr = std::io::stderr();
 
@@ -120,4 +120,10 @@ fn main() -> Result<(), std::io::Error> {
     }
 
     Ok(())
+}
+
+#[no_mangle]
+pub fn main() -> i32 {
+    main_rs().unwrap();
+    0
 }

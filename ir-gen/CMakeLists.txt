@@ -1,7 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
-project(ir-gen CXX)
-
-set(CMAKE_CXX_STANDARD 11)
+project(ir-gen)
 
 find_package(LLVM REQUIRED CONFIG)
 
@@ -12,15 +9,13 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 include_directories(
-	${CMAKE_SOURCE_DIR}/include
-	${CMAKE_SOURCE_DIR}/jsoncpp/include
+	./include
+	./jsoncpp/include
 )
 
 file(GLOB SOURCE 
-	${CMAKE_SOURCE_DIR}/src/*.cc
-	${CMAKE_SOURCE_DIR}/jsoncpp/*.cc
+	./src/*.cc
+	./jsoncpp/*.cc
 )
 
-add_library(ir-gen STATIC ${SOURCE})
-
-install(TARGETS ir-gen DESTINATION .)
+add_library(ir-gen ${SOURCE})

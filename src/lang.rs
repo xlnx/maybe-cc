@@ -15,14 +15,14 @@ lang! {
 	;;
 
 	Id => r"[a-zA-Z_]\w*\b",
-		// => |tok: &mut Token| {
+		// => |tok| -> _ {
 		//     tok.symbol = Symbol::from("Number")
 		// },
 	Number => r"[0-9]+\b",
-	SourceMap => r"\n(#[^\n]*)\n" => |tok| -> bool {
+	SourceMap => r"\n(#[^\n]*)\n" => |tok| -> _ {
 		let caps = SOURCE_MAP.captures(tok.val);
 		println!("{:?}", caps);
-		false
+		None
 	}
 
 	;;

@@ -4,3 +4,6 @@
 [submodule "myrpg"]
 	path = myrpg
 	url = https://github.com/xlnx/myrpg.git
+[submodule "cmake-rs"]
+	path = cmake-rs
+	url = https://github.com/Devolutions/CMakeRust.git
