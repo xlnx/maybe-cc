@@ -13,11 +13,12 @@
 
 #include <functional>
 #include <iostream>
-#include <sstream>
 #include <map>
 
-#include "irgen.h"
 #include <variant.hpp>
+
+#include "irgen.h"
+#include "util.h"
 
 using namespace ffi;
 using namespace llvm;
@@ -28,32 +29,11 @@ static IRBuilder<> Builder( TheContext );
 static std::unique_ptr<Module> TheModule;
 // static std::map<std::string, Value *> NamedValues;
 
-using AstType = variant<Value *, Type *, std::string>;
-
-#define UNIMPLEMENTED( ... )                                                                                 \
-	do                                                                                                       \
-	{                                                                                                        \
-		throw std::logic_error( format( "UNIMPLEMENTED:", __FILE__, ":", __LINE__, ":0 ", ##__VA_ARGS__ ) ); \
-	} while ( 0 )
-
-static void format_helper( std::ostringstream &os )
+struct VoidType
 {
-}
+};
 
-template <typename T, typename... Args>
-static void format_helper( std::ostringstream &os, T &&x, Args &&... args )
-{
-	os << std::forward<T>( x );  // << " ";
-	format_helper( os, std::forward<Args>( args )... );
-}
-
-template <typename... Args>
-static std::string format( Args &&... args )
-{
-	std::ostringstream os;
-	format_helper( os, std::forward<Args>( args )... );
-	return os.str();
-}
+using AstType = variant<Value *, Type *, std::string, VoidType>;
 
 AstType codegen( Json::Value &node );
 std::map<std::string, std::function<Value *( Value *, Value * )>> binaryOps = {
@@ -110,28 +90,39 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 Builder.SetInsertPoint( BB );
 
 		 auto &Body = children[ 5 ];
+		 codegen( Body );
+		 verifyFunction( *TheFunction );
+		 return TheFunction;
+		 //  if ( auto RetVal = get<Value *>( codegen( Body ) ) )
+		 //  {
+		 // 	 Builder.CreateRet( RetVal );
+		 //
 
-		 if ( auto RetVal = get<Value *>( codegen( Body ) ) )
-		 {
-			 Builder.CreateRet( RetVal );
-			 verifyFunction( *TheFunction );
+		 // 	 return TheFunction;
+		 //  }
 
-			 return TheFunction;
-		 }
-
-		 TheFunction->eraseFromParent();
-		 return static_cast<Value *>( nullptr );
+		 //  TheFunction->eraseFromParent();
+		 //  return static_cast<Value *>( nullptr );
 	 } },
 	{ "Stmt", []( Json::Value &node ) -> AstType {
 		 Json::Value &children = node[ "children" ];
 		 codegen( children[ 0 ] );
+
+		 return VoidType();
 	 } },
 	{ "Expr", []( Json::Value &node ) -> AstType {
 		 Json::Value &children = node[ "children" ];
 
 		 if ( children.size() == 1 )
 		 {
-			 return ConstantFP::get( TheContext, APFloat( 1.0f ) );  // TO DO variable
+			 float ret = 1.f;
+
+			 if ( children[ 0 ][ 0 ] == "Number" )
+			 {
+				 std::stringstream ss( children[ 0 ][ 1 ].asString() );
+				 ss >> ret;
+			 }
+			 return ConstantFP::get( TheContext, APFloat( ret ) );  // TO DO variable
 		 }
 		 else if ( children.size() == 2 )
 		 {
@@ -160,9 +151,7 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 
 			 if ( unaryOps.find( operation ) == unaryOps.end() )
 			 {
-				 throw std::logic_error( format(
-				   "unimplemented unary operator:",
-				   operation ) );
+				 UNIMPLEMENTED( "operator ", operation, "\nat node: ", node.toStyledString() );
 			 }
 			 else
 			 {
@@ -177,16 +166,14 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 
 			 if ( binaryOps.find( operation ) == binaryOps.end() )
 			 {
-				 throw std::logic_error( format(
-				   "unimplemented binary operator:",
-				   operation ) );
+				 UNIMPLEMENTED( "operator ", operation, "\nat node: ", node.toStyledString() );
 			 }
 
 			 return binaryOps[ operation ]( lhs, rhs );
 		 }
 		 else if ( children.size() == 4 )
 		 {
-			 UNIMPLEMENTED( "operator []\nat node: ", node.toStyledString() );
+			 UNIMPLEMENTED( node.toStyledString() );
 		 }
 		 else if ( children.size() == 5 )
 		 {
@@ -194,7 +181,7 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 }
 		 else
 		 {
-			 throw std::logic_error( "invalid binary operator" );
+			 UNIMPLEMENTED( node.toStyledString() );
 		 }
 	 } },
 	{ "Block", []( Json::Value &node ) -> AstType {
@@ -204,6 +191,8 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 {
 			 codegen( children[ i ] );
 		 }
+
+		 return VoidType();
 	 } }
 };
 
@@ -217,6 +206,7 @@ AstType codegen( Json::Value &node )
 	}
 	else
 	{
+		//  UNIMPLEMENTED( node.toStyledString() );
 		std::cout << "undefined: " << type << std::endl;
 		return static_cast<Value *>( nullptr );
 	}
