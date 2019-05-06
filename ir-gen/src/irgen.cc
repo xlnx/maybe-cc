@@ -177,7 +177,7 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 }
 		 else if ( children.size() == 5 )
 		 {
-			 return static_cast<Value *>( nullptr );
+			 UNIMPLEMENTED( node.toStyledString() );
 		 }
 		 else
 		 {
