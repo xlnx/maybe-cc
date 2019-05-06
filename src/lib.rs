@@ -8,9 +8,6 @@ use clap::{App, Arg};
 #[allow(unused_imports)]
 use myrpg::{ast::*, log::*, symbol::*, *};
 
-use std::fs::File;
-use std::io::prelude::*;
-
 mod prep;
 use prep::Preprocessor;
 
@@ -20,13 +17,18 @@ use ir::ir_gen;
 mod lang;
 use lang::C;
 
+use std::ffi::CStr;
+use std::fs::File;
+use std::io::prelude::*;
+use std::iter::FromIterator;
+
 macro_rules! error_exit {
     () => {
         |_: ()| std::process::exit(1)
     };
 }
 
-fn main_rs() -> Result<(), std::io::Error> {
+fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
     let stdin = std::io::stdin();
     let mut stderr = std::io::stderr();
 
@@ -54,8 +56,7 @@ fn main_rs() -> Result<(), std::io::Error> {
                 .short("t")
                 .long("target")
                 .multiple(false)
-        )
-        .get_matches();
+        ).get_matches_from(args.iter());
 
     let ir_stuff = ("ir", ".ii");
     let ast_stuff = ("ast", ".ast.json");
@@ -93,9 +94,12 @@ fn main_rs() -> Result<(), std::io::Error> {
     /* preprocessing */
     let preprocessor = Preprocessor::new();
 
-    contents = String::from("\n") + preprocessor
-        .parse(contents.as_str(), &mut logger)
-        .unwrap_or_else(error_exit!()).as_str() + "\n";
+    contents = String::from("\n")
+        + preprocessor
+            .parse(contents.as_str(), &mut logger)
+            .unwrap_or_else(error_exit!())
+            .as_str()
+        + "\n";
 
     /* parsing */
     let parser = LRParser::<C>::new();
@@ -123,7 +127,12 @@ fn main_rs() -> Result<(), std::io::Error> {
 }
 
 #[no_mangle]
-pub fn main() -> i32 {
-    main_rs().unwrap();
-    0
+pub fn main(argc: i32, argv: *const *const i8) -> i32 {
+    unsafe {
+        let mut args = Vec::from_iter(
+            (0..argc as isize).map(|i| CStr::from_ptr(*argv.offset(i)).to_str().unwrap()),
+        );
+        main_rs(args).unwrap();
+        0
+    }
 }

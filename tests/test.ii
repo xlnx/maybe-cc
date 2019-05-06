@@ -1,0 +1,5 @@
+; ModuleID = 'asd'
+
+define double @main() {
+entry:
+}
