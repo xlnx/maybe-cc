@@ -30,6 +30,12 @@ static std::unique_ptr<Module> TheModule;
 
 using AstType = variant<Value *, Type *, std::string>;
 
+#define UNIMPLEMENTED( ... )                                                                                 \
+	do                                                                                                       \
+	{                                                                                                        \
+		throw std::logic_error( format( "UNIMPLEMENTED:", __FILE__, ":", __LINE__, ":0 ", ##__VA_ARGS__ ) ); \
+	} while ( 0 )
+
 static void format_helper( std::ostringstream &os )
 {
 }
@@ -37,7 +43,7 @@ static void format_helper( std::ostringstream &os )
 template <typename T, typename... Args>
 static void format_helper( std::ostringstream &os, T &&x, Args &&... args )
 {
-	os << std::forward<T>( x ) << " ";
+	os << std::forward<T>( x );  // << " ";
 	format_helper( os, std::forward<Args>( args )... );
 }
 
@@ -166,8 +172,8 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 else if ( children.size() == 3 )
 		 {
 			 std::string operation = children[ 1 ][ 1 ].asString();
-			 auto left = get<Value *>( codegen( children[ 0 ] ) );
-			 auto right = get<Value *>( codegen( children[ 2 ] ) );
+			 auto lhs = get<Value *>( codegen( children[ 0 ] ) );
+			 auto rhs = get<Value *>( codegen( children[ 2 ] ) );
 
 			 if ( binaryOps.find( operation ) == binaryOps.end() )
 			 {
@@ -176,11 +182,11 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 				   operation ) );
 			 }
 
-			 return binaryOps[ operation ]( left, right );
+			 return binaryOps[ operation ]( lhs, rhs );
 		 }
 		 else if ( children.size() == 4 )
 		 {
-			 return static_cast<Value *>( nullptr );
+			 UNIMPLEMENTED( "operator []\nat node: ", node.toStyledString() );
 		 }
 		 else if ( children.size() == 5 )
 		 {
@@ -207,7 +213,6 @@ AstType codegen( Json::Value &node )
 	type = type.substr( 0, 4 ) == "Expr" ? "Expr" : type;
 	if ( handlers.find( type ) != handlers.end() )
 	{
-		std::cout << type << std::endl;
 		return handlers[ type ]( node );
 	}
 	else
