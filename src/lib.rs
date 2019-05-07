@@ -138,7 +138,6 @@ pub fn main(argc: i32, argv: *const *const i8) -> i32 {
                 println!("uncaught error: {}", e);
                 std::process::exit(1);
             }
-
         }
         0
     }

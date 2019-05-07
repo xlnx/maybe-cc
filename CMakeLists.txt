@@ -4,6 +4,14 @@ set(CMAKE_CXX_STANDARD 11)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake-rs/cmake")
 
+if (MSVC)
+	set(CMAKE_CXX_FLAGS_DEBUG "/DEBUG")
+	# set(CMAKE_CXX_FLAGS_RELEASE )
+else()
+	set(CMAKE_CXX_FLAGS_DEBUG "-g -pg")
+	set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+endif()
+
 enable_language(Rust)
 include(CMakeCargo)
 
