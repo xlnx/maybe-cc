@@ -129,10 +129,17 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
 #[no_mangle]
 pub fn main(argc: i32, argv: *const *const i8) -> i32 {
     unsafe {
-        let mut args = Vec::from_iter(
+        let args = Vec::from_iter(
             (0..argc as isize).map(|i| CStr::from_ptr(*argv.offset(i)).to_str().unwrap()),
         );
-        main_rs(args).unwrap();
+        match main_rs(args) {
+            Ok(_) => {}
+            Err(e) => {
+                println!("uncaught error: {}", e);
+                std::process::exit(1);
+            }
+
+        }
         0
     }
 }
