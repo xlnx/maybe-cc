@@ -28,6 +28,8 @@ static LLVMContext TheContext;
 static IRBuilder<> Builder( TheContext );
 static std::unique_ptr<Module> TheModule;
 static std::map<std::string, Value *> NamedValues;
+static Function *currentFunction;
+static BasicBlock *currentBB;
 
 struct VoidType
 {
@@ -84,7 +86,10 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 			 return static_cast<Value *>( nullptr );
 		 }
 
+		 currentFunction = TheFunction;
+
 		 BasicBlock *BB = BasicBlock::Create( TheContext, "entry", TheFunction );
+		 currentBB = BB;
 		 Builder.SetInsertPoint( BB );
 
 		 auto &Body = children[ 5 ];
@@ -114,20 +119,16 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 if ( children.size() == 1 )
 		 {
 			 int ret = 1;
-			 if ( children[ 0 ][ 0 ] == "Number" )
+			 if ( children[ 0 ][ 0 ].asString() == "Number" )
 			 {
 				 std::stringstream ss( children[ 0 ][ 1 ].asString() );
 				 ss >> ret;
 			 }
 			 return ConstantInt::get( TheContext, APInt( 32, ret, true ) );  // TO DO variable
-																			 //  else if ( children[ 0 ][ 0 ] == "Id" )
+																			 //  else if ( children[ 0 ][ 0 ].asString() == "Id" )
 																			 //  {
-																			 // 	 Value *val = NamedValues[ children[ 0 ][ 1 ].asString() ];
-																			 // 	 if ( !val )
-																			 // 	 {
-																			 // 		 UNIMPLEMENTED( "Unknown variable name", node.toStyledString() );
-																			 // 	 }
-																			 // 	 return val;
+																			 // 	 std::string variableName = children[ 0 ][ 1 ].asString();
+																			 // 	 return ConstantArray::get( TheContext, variableName.c_str() );
 																			 //  }
 		 }
 		 else if ( children.size() == 2 )
@@ -205,18 +206,26 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 	 } },
 	{ "Decl", []( Json::Value &node ) -> AstType {
 		 auto &children = node[ "children" ];
-		 for ( int i = 0; i < children.size(); i++ )
-		 {
-			 //  if ( !children[ i ][ "type" ].isNull() )
-			 //  {
-			 // 	 if ( children[ i ][ "type" ].asString() == "Type" )
-			 // 	 {
-			 // 		 //Type *retType = get<Type *>( codegen( children[ i ] ) );
-			 // 	 }
-			 //  }
-		 }
+		 Type *retType = get<Type *>( codegen( children[ 0 ] ) );
+		 Builder.SetInsertPoint( currentBB );
+		 auto allocated = Builder.CreateAlloca( retType );
+		 allocated->setName( children[ 1 ][ 1 ].asString() );
+		 //  auto lv = new AllocaInst( retType, 0, children[ 1 ][ 1 ].asString(), currentBB );
 
 		 return VoidType();
+	 } },
+	{ "Type", []( Json::Value &node ) -> AstType {
+		 auto &children = node[ "children" ];
+		 auto variableType = children[ 0 ][ 1 ].asString();
+		 std::map<std::string, std::function<Type *()>> typeTable = {
+			 { "int", []() { return Type::getInt32Ty( TheContext ); } }
+		 };
+
+		 if ( typeTable.find( variableType ) == typeTable.end() )
+		 {
+			 UNIMPLEMENTED( "unimplemented type" );
+		 }
+		 return typeTable[ variableType ]();
 	 } }
 };
 
@@ -226,7 +235,6 @@ AstType codegen( Json::Value &node )
 	type = type.substr( 0, 4 ) == "Expr" ? "Expr" : type;
 	if ( handlers.find( type ) != handlers.end() )
 	{
-		std::cout << node.toStyledString() << std::endl;
 		return handlers[ type ]( node );
 	}
 	else
