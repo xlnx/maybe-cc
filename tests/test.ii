@@ -3,6 +3,5 @@ source_filename = "asd"
 
 define double @main() {
 entry:
-  store float 4.920000e+02, float 1.000000e+00
-  store float 3.000000e+00, float 1.000000e+00
+  store i32 1, i32 1
 }

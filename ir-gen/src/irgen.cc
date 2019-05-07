@@ -27,7 +27,7 @@ using namespace nonstd;
 static LLVMContext TheContext;
 static IRBuilder<> Builder( TheContext );
 static std::unique_ptr<Module> TheModule;
-// static std::map<std::string, Value *> NamedValues;
+static std::map<std::string, Value *> NamedValues;
 
 struct VoidType
 {
@@ -38,17 +38,15 @@ using AstType = variant<Value *, Type *, std::string, VoidType>;
 AstType codegen( Json::Value &node );
 std::map<std::string, std::function<Value *( Value *, Value * )>> binaryOps = {
 	{ "=", []( Value *lhs, Value *rhs ) { Builder.CreateStore( rhs, lhs ); return lhs; } },
-	// { "+=", []( Value *, Value * ) { return nullptr } },
-	// { "-=", []( Value *, Value * ) { return nullptr } },
-	// { "*=", []( Value *, Value * ) { return nullptr } },
-	// { "/=", []( Value *, Value * ) { return nullptr } },
-	// { "%=", []( Value *, Value * ) { return nullptr } },
-	// { "<<=", []( Value *, Value * ) { return nullptr } },
-	// { "&=", []( Value *, Value * ) { return nullptr } },
-	// { "^=", []( Value *, Value * ) { return nullptr } },
-	// { "|=", []( Value *, Value * ) { return nullptr } },
-	// { "=", []( Value *, Value * ) { return nullptr } },
-	// { "=", []( Value *, Value * ) { return nullptr } },
+	{ "+=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateFAdd( lhs, rhs ), lhs ); } },
+	{ "-=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateFSub( lhs, rhs ), lhs ); } },
+	{ "*=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateFMul( lhs, rhs ), lhs ); } },
+	{ "/=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateFDiv( lhs, rhs ), lhs ); } },
+	{ "%=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateFRem( lhs, rhs ), lhs ); } },
+	{ "<<=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateShl( lhs, rhs ), lhs ); } },
+	{ "&=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateAnd( lhs, rhs ), lhs ); } },
+	{ "^=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateXor( lhs, rhs ), lhs ); } },
+	{ "|=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateOr( lhs, rhs ), lhs ); } },
 	{ "||", []( Value *lhs, Value *rhs ) { return Builder.CreateOr( lhs, rhs ); } },
 	{ "&&", []( Value *lhs, Value *rhs ) { return Builder.CreateAnd( lhs, rhs ); } },
 	{ "|", []( Value *lhs, Value *rhs ) { return Builder.CreateOr( lhs, rhs ); } },
@@ -115,14 +113,22 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 
 		 if ( children.size() == 1 )
 		 {
-			 float ret = 1.f;
-
+			 int ret = 1;
 			 if ( children[ 0 ][ 0 ] == "Number" )
 			 {
 				 std::stringstream ss( children[ 0 ][ 1 ].asString() );
 				 ss >> ret;
 			 }
-			 return ConstantFP::get( TheContext, APFloat( ret ) );  // TO DO variable
+			 return ConstantInt::get( TheContext, APInt( 32, ret, true ) );  // TO DO variable
+																			 //  else if ( children[ 0 ][ 0 ] == "Id" )
+																			 //  {
+																			 // 	 Value *val = NamedValues[ children[ 0 ][ 1 ].asString() ];
+																			 // 	 if ( !val )
+																			 // 	 {
+																			 // 		 UNIMPLEMENTED( "Unknown variable name", node.toStyledString() );
+																			 // 	 }
+																			 // 	 return val;
+																			 //  }
 		 }
 		 else if ( children.size() == 2 )
 		 {
@@ -173,6 +179,9 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 }
 		 else if ( children.size() == 4 )
 		 {
+			 auto lhs = get<Value *>( codegen( children[ 0 ] ) );
+			 auto mid = get<Value *>( codegen( children[ 2 ] ) );
+
 			 UNIMPLEMENTED( node.toStyledString() );
 		 }
 		 else if ( children.size() == 5 )
@@ -193,6 +202,21 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 }
 
 		 return VoidType();
+	 } },
+	{ "Decl", []( Json::Value &node ) -> AstType {
+		 auto &children = node[ "children" ];
+		 for ( int i = 0; i < children.size(); i++ )
+		 {
+			 //  if ( !children[ i ][ "type" ].isNull() )
+			 //  {
+			 // 	 if ( children[ i ][ "type" ].asString() == "Type" )
+			 // 	 {
+			 // 		 //Type *retType = get<Type *>( codegen( children[ i ] ) );
+			 // 	 }
+			 //  }
+		 }
+
+		 return VoidType();
 	 } }
 };
 
@@ -202,6 +226,7 @@ AstType codegen( Json::Value &node )
 	type = type.substr( 0, 4 ) == "Expr" ? "Expr" : type;
 	if ( handlers.find( type ) != handlers.end() )
 	{
+		std::cout << node.toStyledString() << std::endl;
 		return handlers[ type ]( node );
 	}
 	else
