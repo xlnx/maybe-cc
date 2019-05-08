@@ -1,6 +1,6 @@
 use std::io::prelude::*;
 
-use myrpg::log::{Item, Logger, Severity, SourceFileLocation};
+use myrpg::*;
 
 pub struct Preprocessor {}
 
@@ -15,9 +15,9 @@ impl PreprocessError {
     }
 }
 
-impl<'a> std::convert::From<PreprocessError> for Item<'a> {
+impl<'a> std::convert::From<PreprocessError> for LogItem<'a> {
     fn from(err: PreprocessError) -> Self {
-        Item {
+        LogItem {
             level: Severity::Warning,
             location: Some(SourceFileLocation {
                 name: "asd".into(),

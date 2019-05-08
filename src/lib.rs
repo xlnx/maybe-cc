@@ -5,8 +5,7 @@ extern crate lazy_static;
 
 use clap::{App, Arg};
 
-#[allow(unused_imports)]
-use myrpg::{ast::*, log::*, symbol::*, *};
+use myrpg::*;
 
 mod prep;
 use prep::Preprocessor;

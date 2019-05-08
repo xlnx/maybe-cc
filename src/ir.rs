@@ -1,4 +1,4 @@
-use myrpg::{ast::*, log::*};
+use myrpg::*;
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -49,7 +49,7 @@ pub fn ir_gen<T>(ast: &Ast<T>, logger: &mut Logger) -> Result<String, ()> {
         unsafe {
             let msg_chunk = &*msg.msgs.offset(i as isize);
             let msg = CStr::from_ptr(msg_chunk.msg).to_str().unwrap();
-            logger.log(&Item {
+            logger.log(&LogItem {
                 level: match msg_chunk.msg_type {
                     MSG_TYPE_ERROR => {
                         error = true;
