@@ -63,3 +63,25 @@ public:
 		return os;
 	}
 };
+
+struct StackTrace
+{
+private:
+	bool old_flag;
+
+public:
+	StackTrace( bool flag = true ) :
+	  old_flag( stackTrace )
+	{
+		stackTrace = flag;
+	}
+	~StackTrace()
+	{
+		stackTrace = old_flag;
+	}
+
+	StackTrace( StackTrace && ) = delete;
+	StackTrace( const StackTrace & ) = delete;
+	StackTrace &operator=( StackTrace && ) = delete;
+	StackTrace &operator=( const StackTrace & ) = delete;
+};

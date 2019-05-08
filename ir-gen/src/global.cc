@@ -8,3 +8,4 @@ Function *currentFunction;
 BasicBlock *currentBB;
 MsgList *infoList;
 symbolTable symTable = symbolTable();
+bool stackTrace = false;

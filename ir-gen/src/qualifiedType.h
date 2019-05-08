@@ -74,7 +74,6 @@ struct QualifiedFunction : Qualified
 	  Qualified( FunctionType::get( result_type, map_type( args ), false ) ),
 	  args( args )
 	{
-		WARN( "function arg name ignored" );
 	}
 
 private:

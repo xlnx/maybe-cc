@@ -275,11 +275,10 @@ std::map<std::string, std::function<AstType( Json::Value &, const ArgsType & )>>
 	{ "init_declarator", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 // with arg = QualifiedTypeBuilder *
 		 auto &children = node[ "children" ];
+		 // name can never be empty because "declarator" != empty
 		 auto name = get<std::string>( codegen( children[ 0 ], arg ) );
 		 auto builder = get<QualifiedTypeBuilder *>( arg );
 		 auto type = builder->build();
-
-		 WARN( "need handle empty" );
 
 		 auto alloc = Builder.CreateAlloca( type.get_type() );
 		 alloc->setName( name );
@@ -292,7 +291,7 @@ std::map<std::string, std::function<AstType( Json::Value &, const ArgsType & )>>
 		 }
 		 else
 		 {
-			 WARN( "fix required" );
+			 TODO( "deal with empty initializer list" );
 		 }
 
 		 auto res = QualifiedDecl( type, name );
@@ -371,7 +370,10 @@ std::map<std::string, std::function<AstType( Json::Value &, const ArgsType & )>>
 		 auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
 		 auto builder = declspec.into_type_builder( children[ 0 ] );
 
-		 if ( children.size() == 1 ) return builder.build();
+		 if ( children.size() == 1 )
+		 {
+			 return QualifiedDecl( builder.build() );
+		 }
 		 auto &child = children[ 1 ];
 		 auto type = child[ "type" ].asString();
 		 if ( type == "abstract_declarator" )
@@ -465,12 +467,18 @@ AstType codegen( Json::Value &node, const ArgsType &arg )
 	std::string type = node[ "type" ].asString();
 	type = type.substr( 0, 4 ) == "Expr" ? "Expr" : type;
 
-	// dbg( "+ ", type );
+	if ( stackTrace )
+	{
+		dbg( "+ ", type );
+	}
 
 	if ( handlers.find( type ) != handlers.end() )
 	{
 		auto res = handlers[ type ]( node, arg );
-		// dbg( "- ", type );
+		if ( stackTrace )
+		{
+			dbg( "- ", type );
+		}
 		return res;
 	}
 	else

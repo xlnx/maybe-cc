@@ -36,6 +36,7 @@ extern Function *currentFunction;
 extern BasicBlock *currentBB;
 extern ffi::MsgList *infoList;
 extern symbolTable symTable;
+extern bool stackTrace;
 
 #define UNIMPLEMENTED( ... )                                                                              \
 	do                                                                                                    \
@@ -49,10 +50,10 @@ extern symbolTable symTable;
 		throw std::logic_error( fmt( "INTERNAL ERROR:", __FILE__, ":", __LINE__, ":0 ", ##__VA_ARGS__ ) ); \
 	} while ( 0 )
 
-#define WARN( ... )                                                                                           \
+#define TODO( ... )                                                                                           \
 	do                                                                                                        \
 	{                                                                                                         \
-		infoList->add_msg( MSG_TYPE_WARNING, fmt( "WARN:", __FILE__, ":", __LINE__, ":0 ", ##__VA_ARGS__ ) ); \
+		infoList->add_msg( MSG_TYPE_WARNING, fmt( "TODO:", __FILE__, ":", __LINE__, ":0 ", ##__VA_ARGS__ ) ); \
 	} while ( 0 )
 
 #define HALT()      \
