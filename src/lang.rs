@@ -212,7 +212,7 @@ lang! {
     ],
     declaration => [
         declaration_specifiers_i ";",
-        declaration_specifiers_i init_declarator_list_i ";" => @reduce |ast| {
+        declaration_specifiers_i init_declarator_list ";" => @reduce |ast| {
             if let AstNode::Ast(ref decl) = ast.children[0] {
                 if contains_typedef(&decl) {
                     if let AstNode::Ast(ref init) = ast.children[1] {
@@ -232,9 +232,6 @@ lang! {
         type_specifier declaration_specifiers |@flatten|,
         type_qualifier |@flatten|,
         type_qualifier declaration_specifiers |@flatten|
-    ],
-    init_declarator_list_i => [
-        init_declarator_list
     ],
     init_declarator_list => [
         init_declarator |@flatten|,
@@ -316,7 +313,7 @@ lang! {
         direct_declarator |@flatten|
     ],
     direct_declarator => [
-        IDENTIFIER |@flatten|,
+        IDENTIFIER,
         "(" declarator ")",
         direct_declarator "[" constant_expression "]",
         direct_declarator "[" "]",
@@ -326,21 +323,24 @@ lang! {
     ],
     pointer => [
         "*",
-        "*" type_qualifier_list,
+        "*" type_qualifier_list_i,
         "*" pointer,
-        "*" type_qualifier_list pointer
+        "*" type_qualifier_list_i pointer
+    ],
+    type_qualifier_list_i => [
+        type_qualifier_list
     ],
     type_qualifier_list => [
         type_qualifier |@flatten|,
         type_qualifier_list type_qualifier |@flatten|
     ],
     parameter_type_list => [
-        parameter_list,
-        parameter_list "," "..."
+        parameter_list |@flatten|,
+        parameter_list "," "..." |@flatten|
     ],
     parameter_list => [
-        parameter_declaration,
-        parameter_list "," parameter_declaration
+        parameter_declaration |@flatten|,
+        parameter_list "," parameter_declaration |@flatten|
     ],
     parameter_declaration => [
         declaration_specifiers_i declarator,

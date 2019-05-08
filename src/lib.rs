@@ -126,7 +126,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
     }
 
     /* ir-generation */
-    let ir = ir_gen(&ast, &mut logger).unwrap_or_else(error_exit!());
+    let ir = ir_gen(&ast, &mut logger, &contents).unwrap_or_else(error_exit!());
 
     if target == "ir" {
         let mut out = File::create(out_file)?;

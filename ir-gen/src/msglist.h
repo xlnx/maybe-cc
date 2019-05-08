@@ -23,12 +23,13 @@ struct Msg final
 
 public:
 	Msg( int type, const std::string &cxx_msg,
-		 const Json::Value &cxx_pos ) :
+		 const Json::Value &node ) :
 	  msg( (char *)malloc( sizeof( char ) * cxx_msg.length() + 1 ) ),
 	  type( type ),
 	  has_loc( true )
 	{
 		memcpy( msg, cxx_msg.c_str(), cxx_msg.length() + 1 );
+		auto &cxx_pos = node.isArray() ? node[ 2 ] : node[ "pos" ];
 		assert( cxx_pos.size() == 4 );
 		for ( auto i = 0; i < 4; i++ )
 		{

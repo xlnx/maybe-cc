@@ -26,7 +26,19 @@ extern "C" {
     fn free_llvm_ir(msg: *const MsgList, ir: *const c_char);
 }
 
-pub fn ir_gen<T>(ast: &Ast<T>, logger: &mut Logger) -> Result<String, ()> {
+fn find_line(text: &String, line: usize) -> &str {
+    let mut ln = text.as_str();
+    for i in 0..line {
+        if let Some(pos) = ln.find(|c: char| c == '\n') {
+            ln = &ln[(pos + 1)..];
+        } else {
+            return ln;
+        }
+    }
+    ln
+}
+
+pub fn ir_gen<T>(ast: &Ast<T>, logger: &mut Logger, text: &String) -> Result<String, ()> {
     let mut msg_c: *const MsgList = std::ptr::null();
     let ir_c: *const c_char;
 
@@ -60,8 +72,8 @@ pub fn ir_gen<T>(ast: &Ast<T>, logger: &mut Logger) -> Result<String, ()> {
                 },
                 location: if msg_chunk.has_loc != 0 {
                     Some(SourceFileLocation {
-                        name: "ASDASD".into(),
-                        line: "fuck you.",
+                        name: "<from-ir-generation>".into(),
+                        line: find_line(text, msg_chunk.pos[0]),
                         from: (msg_chunk.pos[0], msg_chunk.pos[1]),
                         to: (msg_chunk.pos[2], msg_chunk.pos[3]),
                     })

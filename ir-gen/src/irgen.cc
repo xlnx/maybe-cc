@@ -1,47 +1,32 @@
-#include "llvm/ADT/APFloat.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Type.h"
-#include "llvm/IR/Verifier.h"
-#include "llvm/Support/raw_ostream.h"
-
-#include <functional>
-#include <iostream>
-#include <map>
-
-#include <variant.hpp>
+#include "common.h"
 
 #include "irgen.h"
-#include "util.h"
+#include "utility.h"
 #include "symbolMap.h"
-
-using namespace ffi;
-using namespace llvm;
-using namespace nonstd;
-
-static LLVMContext TheContext;
-static IRBuilder<> Builder( TheContext );
-static std::unique_ptr<Module> TheModule;
-static std::map<std::string, Value *> NamedValues;
-static Function *currentFunction;
-static BasicBlock *currentBB;
-static MsgList *infoList;
-static symbolTable symTable = symbolTable();
+#include "declarationSpecifier.h"
 
 struct VoidType
 {
 };
 
-using AstType = variant<Value *, Type *, std::string, VoidType>;
-using ArgsType = variant<Value *, Type *, VoidType>;
+using AstType = variant<
+  Value *,
+  int,
+  std::string,
+  Type *,
+  QualifiedType,
+  DeclarationSpecifiers,
+  QualifiedDecl,
+  QualifiedTypeBuilder *,
+  VoidType>;
+
+using ArgsType = variant<
+  Value *,
+  QualifiedTypeBuilder *,
+  VoidType>;
 
 AstType codegen( Json::Value &node, const ArgsType &arg = VoidType() );
+
 std::map<std::string, std::function<Value *( Value *, Value * )>> binaryOps = {
 	{ "=", []( Value *lhs, Value *rhs ) { Builder.CreateStore( rhs, lhs ); return lhs; } },
 	{ "+=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateFAdd( lhs, rhs ), lhs ); } },
@@ -75,31 +60,45 @@ std::map<std::string, std::function<Value *( Value *, Value * )>> binaryOps = {
 std::map<std::string, std::function<AstType( Json::Value &, const ArgsType & )>> handlers = {
 	{ "function_definition", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 Json::Value &children = node[ "children" ];
-		 auto name = children[ 1 ][ 1 ].asString();
-		 Function *TheFunction = TheModule->getFunction( name );
 
-		 if ( !TheFunction )
+		 auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
+		 auto builder = declspec.into_type_builder( children[ 0 ] );
+
+		 auto name = get<std::string>( codegen( children[ 1 ], &builder ) );
+		 auto type = builder.build();
+
+		 auto decl = QualifiedDecl( type, name );
+
+		 //  dbg( "in function_definition: ", decl );
+
+		 if ( !type.get_type()->isFunctionTy() )
 		 {
-			 std::vector<Type *> Args;
-			 FunctionType *FT = FunctionType::get( Type::getDoubleTy( TheContext ), Args, false );
-			 TheFunction = Function::Create( FT, Function::ExternalLinkage, name, TheModule.get() );
+			 infoList->add_msg( MSG_TYPE_ERROR, "expected a function defination", children[ 0 ] );
+			 HALT();
 		 }
 
-		 if ( !TheFunction )
+		 auto fn_type = static_cast<FunctionType *>( type.get_type() );
+
+		 auto fn = TheModule->getFunction( name );
+
+		 if ( !fn )
 		 {
-			 return static_cast<Value *>( nullptr );
+			 if ( !( fn = Function::Create( fn_type, Function::ExternalLinkage, name, TheModule.get() ) ) )
+			 {
+				 INTERNAL_ERROR();
+			 }
 		 }
 
-		 currentFunction = TheFunction;
+		 currentFunction = fn;
 
-		 BasicBlock *BB = BasicBlock::Create( TheContext, "entry", TheFunction );
+		 BasicBlock *BB = BasicBlock::Create( TheContext, "entry", fn );
 		 currentBB = BB;
 		 Builder.SetInsertPoint( BB );
 
-		 auto &Body = children[ 5 ];
-		 codegen( Body );
-		 verifyFunction( *TheFunction );
-		 return TheFunction;
+		 codegen( children[ 2 ] );
+		 verifyFunction( *fn );
+
+		 return fn;
 		 //  if ( auto RetVal = get<Value *>( codegen( Body ) ) )
 		 //  {
 		 // 	 Builder.CreateRet( RetVal );
@@ -217,46 +216,47 @@ std::map<std::string, std::function<AstType( Json::Value &, const ArgsType & )>>
 		 }
 		 return VoidType();
 	 } },
+	/* VERIFIED */
 	{ "declaration", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
-		 // Ignore the ;
-		 Type *type = get<Type *>( codegen( children[ 0 ] ) );
 
-		 UNIMPLEMENTED( "declaration to do" );
-		 return VoidType();
-	 } },
-	{ "declaration_specifiers_i", []( Json::Value &node, const ArgsType &arg ) -> AstType {
-		 auto &children = node[ "children" ];
-		 unsigned int state = 0;
-		 // 16 bit, from left to right,
-		 Type *retType;
-		 //int
-		 //  std::vector<Type *> typeSpecifier;
-		 //  std::vector<std::string> type_qualifier;
-		 //  std::vector<std::string> storageSpecifier;
-		 UNIMPLEMENTED( "declaration_specifiers_i" );
-		 for ( int i = 0; i < children.size(); i++ )
+		 auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
+
+		 for ( int i = 1; i < children.size(); ++i )
 		 {
-			 if ( children[ i ][ "type" ].asString() == "type_specifier" )
+			 auto &child = children[ i ];
+			 if ( child.isObject() )
 			 {
-				 //retType = get<Type *>( codegen( children[ i ], arg ) );
-			 }
-			 else if ( children[ i ][ "type" ].asString() == "type_qualifier" )
-			 {
-			 }
-			 else if ( children[ i ][ "type" ].asString() == "storage_class_specifier" )
-			 {
+				 auto builder = declspec.into_type_builder( children[ 0 ] );
+				 codegen( children[ i ], &builder );
 			 }
 		 }
-		 UNIMPLEMENTED( "declaration_specifiers_i" );
-		 //return VoidType();
 
-		 //  Type *retType = get<Type *>( codegen( children[ 0 ] ) );
-		 //  return retType;
-		 //  Builder.SetInsertPoint( currentBB );
-		 //  auto allocated = Builder.CreateAlloca( retType );
-		 //  allocated->setName( children[ 1 ][ 1 ].asString() );
-		 //  auto lv = new AllocaInst( retType, 0, children[ 1 ][ 1 ].asString(), currentBB );
+		 return VoidType();
+	 } },
+	/* VERIFIED */
+	{ "declaration_specifiers_i", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 auto &children = node[ "children" ];
+
+		 DeclarationSpecifiers declspec;
+
+		 // Collect all attribute and types.
+		 for ( int i = 0; i < children.size(); ++i )
+		 {
+			 auto &child = children[ i ];
+			 auto type = child[ "type" ].asString();
+			 if ( type == "type_specifier" )
+			 {
+				 declspec.add_type( get<Type *>( codegen( child ) ), child );
+			 }
+			 else
+			 {
+				 auto &token = child[ "children" ][ 0 ][ 1 ];
+				 declspec.add_attribute( token.asString(), token );
+			 }
+		 }
+
+		 return declspec;
 	 } },
 	{ "type_specifier", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
@@ -271,71 +271,173 @@ std::map<std::string, std::function<AstType( Json::Value &, const ArgsType & )>>
 		 }
 		 return typeTable[ variableType ]();
 	 } },
-	{ "init_declarator_list_i", []( Json::Value &node, const ArgsType &arg ) -> AstType {
-		 auto &children = node[ "children" ];
-
-		 for ( int i = 0; i < children.size(); i++ )
-		 {
-			 if ( !children[ i ][ "type" ].isNull() )
-			 {
-				 codegen( children[ i ], arg );
-			 }
-		 }
-		 return VoidType();
-	 } },
+	/* IMPLEMENTING -> QualifiedDecl */
 	{ "init_declarator", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 // with arg = QualifiedTypeBuilder *
 		 auto &children = node[ "children" ];
-		 for ( int i = 0; i < children.size(); i++ )
+		 auto name = get<std::string>( codegen( children[ 0 ], arg ) );
+		 auto builder = get<QualifiedTypeBuilder *>( arg );
+		 auto type = builder->build();
+
+		 WARN( "need handle empty" );
+
+		 auto alloc = Builder.CreateAlloca( type.get_type() );
+		 alloc->setName( name );
+		 symTable.insert( name, alloc );
+
+		 if ( children.size() > 1 )
 		 {
-			 if ( !children[ i ][ "type" ].isNull() )
-			 {
-				 codegen( children[ i ], arg );
-			 }
-			 else if ( children[ i ][ 0 ].isString() == "IDENTIFIER" )
-			 {
-				 auto variableName = children[ i ][ 1 ].asString();
-				 auto allocated = Builder.CreateAlloca( arg );
-				 allocated->setName( variableName );
-				 symTable.insert( variableName, allocated );
-			 }
+			 auto init = get<Value *>( codegen( children[ 2 ], arg ) );
+			 Builder.CreateStore( alloc, init );
 		 }
-		 return VoidType();
+		 else
+		 {
+			 WARN( "fix required" );
+		 }
+
+		 auto res = QualifiedDecl( type, name );
+		 //  dbg( "in init_declarator: ", res );
+		 return res;
 	 } },
 	{ "direct_declarator", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 // with arg = QualifiedTypeBuilder *
 		 auto &children = node[ "children" ];
-		 for ( int i = 0; i < children.size(); i++ )
+
+		 // direct_declarator -> direct_declarator ...
+		 if ( children[ 0 ].isObject() )
 		 {
-			 if ( !children[ i ][ "type" ].isNull() )
+			 // calculate return type first!
+			 children[ 0 ];
+			 auto res = codegen( children[ 0 ], arg );
+			 auto la = children[ 1 ][ 1 ].asString();
+			 if ( la == "[" )
 			 {
-				 codegen( children[ i ], arg );
+				 if ( children.size() == 4 )
+				 {
+					 UNIMPLEMENTED();
+				 }
+				 else
+				 {
+					 UNIMPLEMENTED();
+				 }
 			 }
-			 else if ( children[ i ][ 0 ].isString() == "IDENTIFIER" )
+			 else if ( la == "(" )
 			 {
-				 auto variableName = children[ i ][ 1 ].asString();
-				 auto allocated = Builder.CreateAlloca( arg );
-				 allocated->setName( variableName );
-				 symTable.insert( variableName, allocated );
+				 auto builder = get<QualifiedTypeBuilder *>( arg );
+				 std::vector<QualifiedDecl> args;
+				 for ( int j = 2; j < children.size() - 1; ++j )
+				 {
+					 auto &child = children[ j ];
+					 if ( child.isObject() )
+					 {
+						 auto decl = get<QualifiedDecl>( codegen( child ) );
+						 args.emplace_back( decl );
+					 }
+				 }
+				 builder->add_level( std::make_shared<QualifiedFunction>(
+				   builder->get_type(), args ) );
+
+				 return res;
+			 }
+			 else
+			 {
+				 INTERNAL_ERROR();
+			 }
+			 return res;
+		 }
+		 else if ( children[ 0 ].isArray() )
+		 {
+			 auto tok = children[ 0 ][ 1 ].asString();
+			 if ( tok == "(" )
+			 {
+				 return codegen( children[ 1 ], arg );
+			 }
+			 else
+			 {
+				 return tok;
 			 }
 		 }
+		 else
+		 {
+			 INTERNAL_ERROR();
+		 }
+
+		 INTERNAL_ERROR();
+	 } },
+	/* VERIFIED -> QualifiedDecl */
+	{ "parameter_declaration", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 auto &children = node[ "children" ];
+
+		 auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
+		 auto builder = declspec.into_type_builder( children[ 0 ] );
+
+		 if ( children.size() == 1 ) return builder.build();
+		 auto &child = children[ 1 ];
+		 auto type = child[ "type" ].asString();
+		 if ( type == "abstract_declarator" )
+		 {
+			 UNIMPLEMENTED();
+		 }
+		 else
+		 {
+			 auto name = get<std::string>( codegen( child, &builder ) );
+			 auto res = QualifiedDecl( builder.build(), name );
+			 //  dbg( "in parameter_declaration: ", res );
+			 return res;
+		 }
+	 } },
+	/* VERIFIED */
+	{ "declarator", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 // with arg = QualifiedTypeBuilder *
+		 auto &children = node[ "children" ];
+		 auto res = codegen( children[ 1 ], arg );
+		 codegen( children[ 0 ], arg );
+		 return res;
+	 } },
+	/* VERIFIED */
+	{ "pointer", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 // with arg = QualifiedTypeBuilder *
+		 auto &children = node[ "children" ];
+		 int type_qualifier = 0;
+
+		 if ( children.size() > 1 )
+		 {
+			 if ( children[ 1 ][ "type" ].asString() == "type_qualifier_list_i" )
+			 {
+				 type_qualifier = get<int>( codegen( children[ 1 ] ) );
+				 if ( children.size() > 2 )
+				 {
+					 codegen( children[ 2 ], arg );
+				 }
+			 }
+			 else
+			 {
+				 codegen( children[ 1 ], arg );
+			 }
+		 }
+
+		 auto builder = get<QualifiedTypeBuilder *>( arg );
+		 auto base = builder->get_type();
+		 builder->add_level( std::make_shared<QualifiedPointer>(
+		   base,
+		   ( type_qualifier & TQ_CONST ) != 0,
+		   ( type_qualifier & TQ_VOLATILE ) != 0 ) );
+
 		 return VoidType();
 	 } },
-	{ "declarator", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+	{ "type_qualifier_list_i", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
-		 for ( int i = 0; i < children.size(); i++ )
+
+		 int type_qualifier = 0;
+
+		 for ( int i = 0; i < children.size(); ++i )
 		 {
-			 if ( !children[ i ][ "type" ].isNull() )
-			 {
-				 codegen( children[ i ], arg );
-			 }
-			 else if ( children[ i ][ 0 ].isString() == "IDENTIFIER" )
-			 {
-				 auto variableName = children[ i ][ 1 ].asString();
-				 auto allocated = Builder.CreateAlloca( arg );
-				 allocated->setName( variableName );
-				 symTable.insert( variableName, allocated );
-			 }
+			 auto child = children[ i ][ "children" ][ 0 ][ 1 ].asString();
+			 if ( child == "const" ) type_qualifier |= TQ_CONST;
+			 if ( child == "volatile" ) type_qualifier |= TQ_VOLATILE;
 		 }
-		 return VoidType();
+
+		 return type_qualifier;
 	 } },
 	{ "initializer", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
@@ -349,6 +451,7 @@ std::map<std::string, std::function<AstType( Json::Value &, const ArgsType & )>>
 			 else if ( type == "IDENTIFIER" )
 			 {
 			 }
+			 UNIMPLEMENTED( "initializer" );
 		 }
 		 else
 		 {
@@ -357,18 +460,23 @@ std::map<std::string, std::function<AstType( Json::Value &, const ArgsType & )>>
 	 } }
 };
 
-AstType codegen( Json::Value &node, const ArgsType &arg = VoidType() )
+AstType codegen( Json::Value &node, const ArgsType &arg )
 {
 	std::string type = node[ "type" ].asString();
 	type = type.substr( 0, 4 ) == "Expr" ? "Expr" : type;
+
+	// dbg( "+ ", type );
+
 	if ( handlers.find( type ) != handlers.end() )
 	{
-		return handlers[ type ]( node, arg );
+		auto res = handlers[ type ]( node, arg );
+		// dbg( "- ", type );
+		return res;
 	}
 	else
 	{
 		//  UNIMPLEMENTED( node.toStyledString() );
-		std::cout << "undefined: " << type << std::endl;
+		dbg( "U ", type );
 		return static_cast<Value *>( nullptr );
 	}
 }
@@ -387,11 +495,6 @@ char *gen_llvm_ir_cxx( const char *ast_json, MsgList &list )
 	for ( auto i = 0; i < root.size(); ++i )
 	{
 		codegen( root[ i ] );
-	}
-
-	for ( int i = 0; i < 2; i++ )
-	{
-		infoList->add_msg( MSG_TYPE_WARNING, "To DO" );
 	}
 
 	std::string cxx_ir;
@@ -416,6 +519,10 @@ char *gen_llvm_ir( const char *ast_json, MsgList **msg )
 	{
 		( *msg )->add_msg( MSG_TYPE_ERROR,
 						   std::string( "internal error: ir-gen crashed with exception: " ) + e.what() );
+		return nullptr;
+	}
+	catch ( int )
+	{
 		return nullptr;
 	}
 	catch ( ... )
