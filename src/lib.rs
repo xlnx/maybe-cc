@@ -3,6 +3,9 @@ extern crate clap;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate ref_thread_local;
+
 use clap::{App, Arg};
 
 use myrpg::*;
@@ -47,6 +50,12 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
             Arg::with_name("input")
                 .help("input file")
                 .index(1)
+        )
+        .arg(
+            Arg::with_name("print")
+                .help("print ast in tree structure")
+                .short("p")
+                .long("print")
         )
         .arg(
             Arg::with_name("target")
@@ -110,6 +119,9 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
     if target == "ast" {
         let mut out = File::create(out_file)?;
         out.write(ast.to_json_pretty().as_bytes())?;
+        if matches.is_present("print") {
+            ast.print_tree();
+        }
         std::process::exit(0);
     }
 

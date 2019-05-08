@@ -1,10 +1,68 @@
 #[allow(unused_imports)]
 use myrpg::*;
+use ref_thread_local::RefThreadLocal;
 use regex::Regex;
+use std::collections::HashSet;
+
+ref_thread_local! {
+    static managed TYPE_MAP: HashSet<String> = HashSet::new();
+}
 
 lazy_static! {
     static ref SOURCE_MAP: Regex =
         Regex::new(r##"#\s+(\S+)\s+"((:?\\.|[^\\"])*)"\s*(.*)"##).unwrap();
+}
+
+fn contains_typedef<T>(ast: &Ast<T>) -> bool {
+    for child in ast.children.iter() {
+        match child {
+            AstNode::Ast(ast) => {
+                if contains_typedef(&ast) {
+                    return true;
+                }
+            }
+            AstNode::Token(token) => {
+                if token.as_str() == "typedef" {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+fn register_types<T>(ast: &Ast<T>) {
+
+    match ast.symbol.as_str() {
+        "init_declarator" => {
+            if let AstNode::Ast(ref ast) = ast.children[0] {
+                register_types(&ast);
+            }
+        }
+        "direct_declarator" => {
+            match ast.children[0] {
+                AstNode::Ast(ref ast) => {
+                    register_types(&ast);
+                }
+                AstNode::Token(ref token) => {
+                    if token.symbol.as_str() == "IDENTIFIER" {
+                        TYPE_MAP.borrow_mut().insert(token.as_str().into());
+                    } else {
+                        if let AstNode::Ast(ref ast) = ast.children[1] {
+                            register_types(&ast);
+                        }
+                    }
+                }
+            }
+        }
+        _ => {
+            for child in ast.children.iter() {
+                if let AstNode::Ast(ast) = child {
+                    register_types(&ast);
+                }
+            }
+        }
+    }
 }
 
 lang! {
@@ -33,10 +91,13 @@ lang! {
         }
         ctrl.discard();
     },
-    IDENTIFIER => r"[a-zA-Z_]\w*\b",
-        // => |tok| -> _ {
-        //     tok.symbol = Symbol::from("Number")
-        // },
+    IDENTIFIER => r"[a-zA-Z_]\w*\b"
+        => |tok, ctrl| {
+            let sym: String = tok.as_str().into();
+            if TYPE_MAP.borrow().contains(&sym) {
+                tok.symbol = Symbol::from("TYPE_NAME").as_terminal();
+            }
+        },
     TYPE_NAME => r"$^$^",
     CONSTANT => r#"0[xX][0-9A-Fa-f]+(?:u|U|l|L)*?|[0-9]+(?:u|U|l|L)*?|[a-zA-Z_]?'(?:\\.|[^\\'])+'|[0-9]+[Ee][\+-]?[0-9]+(?:f|F|l|L)?|[0-9]*"."[0-9]+(?:[Ee][\+-]?[0-9]+)?(?:f|F|l|L)?"#,
     STRING_LITERAL => r#"[a-zA-Z_]?"(\\.|[^\\"])*"#
@@ -151,7 +212,15 @@ lang! {
     ],
     declaration => [
         declaration_specifiers_i ";",
-        declaration_specifiers_i init_declarator_list_i ";"
+        declaration_specifiers_i init_declarator_list_i ";" => @reduce |ast| {
+            if let AstNode::Ast(ref decl) = ast.children[0] {
+                if contains_typedef(&decl) {
+                    if let AstNode::Ast(ref init) = ast.children[1] {
+                        register_types(&init);
+                    }
+                }
+            }
+        }
     ],
     declaration_specifiers_i => [
         declaration_specifiers
