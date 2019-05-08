@@ -28,7 +28,7 @@ lang! {
                 }
 
                 ctrl.set_source_file(file.as_str())
-                    .set_location((0, line.as_str().parse::<usize>().unwrap()));
+                    .set_location((line.as_str().parse::<isize>().unwrap() - 2, 0));
             }
         }
         ctrl.discard();
