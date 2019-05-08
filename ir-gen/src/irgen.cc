@@ -32,14 +32,16 @@ static std::map<std::string, Value *> NamedValues;
 static Function *currentFunction;
 static BasicBlock *currentBB;
 static MsgList *infoList;
+static symbolTable symTable = symbolTable();
 
 struct VoidType
 {
 };
 
 using AstType = variant<Value *, Type *, std::string, VoidType>;
+using ArgsType = variant<Value *, Type *, VoidType>;
 
-AstType codegen( Json::Value &node );
+AstType codegen( Json::Value &node, const ArgsType &arg = VoidType() );
 std::map<std::string, std::function<Value *( Value *, Value * )>> binaryOps = {
 	{ "=", []( Value *lhs, Value *rhs ) { Builder.CreateStore( rhs, lhs ); return lhs; } },
 	{ "+=", []( Value *lhs, Value *rhs ) { return Builder.CreateStore( Builder.CreateFAdd( lhs, rhs ), lhs ); } },
@@ -70,8 +72,8 @@ std::map<std::string, std::function<Value *( Value *, Value * )>> binaryOps = {
 	{ "/", []( Value *lhs, Value *rhs ) { return Builder.CreateFDiv( lhs, rhs ); } },
 	{ "%", []( Value *lhs, Value *rhs ) { return Builder.CreateFRem( lhs, rhs ); } },
 };
-std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
-	{ "function_definition", []( Json::Value &node ) -> AstType {
+std::map<std::string, std::function<AstType( Json::Value &, const ArgsType & )>> handlers = {
+	{ "function_definition", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 Json::Value &children = node[ "children" ];
 		 auto name = children[ 1 ][ 1 ].asString();
 		 Function *TheFunction = TheModule->getFunction( name );
@@ -109,13 +111,13 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 //  TheFunction->eraseFromParent();
 		 //  return static_cast<Value *>( nullptr );
 	 } },
-	{ "Stmt", []( Json::Value &node ) -> AstType {
+	{ "Stmt", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 Json::Value &children = node[ "children" ];
 		 codegen( children[ 0 ] );
 
 		 return VoidType();
 	 } },
-	{ "Expr", []( Json::Value &node ) -> AstType {
+	{ "Expr", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 Json::Value &children = node[ "children" ];
 
 		 if ( children.size() == 1 )
@@ -196,7 +198,7 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 			 UNIMPLEMENTED( node.toStyledString() );
 		 }
 	 } },
-	{ "compound_statement", []( Json::Value &node ) -> AstType {
+	{ "compound_statement", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
 
 		 // Ignore the { and }
@@ -204,10 +206,10 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 {
 			 codegen( children[ i ] );
 		 }
-
+		 symTable.push();
 		 return VoidType();
 	 } },
-	{ "declaration_list", []( Json::Value &node ) -> AstType {
+	{ "declaration_list", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
 		 for ( int i = 0; i < children.size(); i++ )
 		 {
@@ -215,7 +217,7 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 }
 		 return VoidType();
 	 } },
-	{ "declaration", []( Json::Value &node ) -> AstType {
+	{ "declaration", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
 		 // Ignore the ;
 		 Type *type = get<Type *>( codegen( children[ 0 ] ) );
@@ -223,21 +225,40 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 UNIMPLEMENTED( "declaration to do" );
 		 return VoidType();
 	 } },
-	{ "declaration_specifiers_i", []( Json::Value &node ) -> AstType {
+	{ "declaration_specifiers_i", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
-
-		 if ( children.size() != 1 )
+		 unsigned int state = 0;
+		 // 16 bit, from left to right,
+		 Type *retType;
+		 //int
+		 //  std::vector<Type *> typeSpecifier;
+		 //  std::vector<std::string> type_qualifier;
+		 //  std::vector<std::string> storageSpecifier;
+		 UNIMPLEMENTED( "declaration_specifiers_i" );
+		 for ( int i = 0; i < children.size(); i++ )
 		 {
-			 infoList->add_msg( MSG_TYPE_ERROR, "muti type specifiers" );
+			 if ( children[ i ][ "type" ].asString() == "type_specifier" )
+			 {
+				 //retType = get<Type *>( codegen( children[ i ], arg ) );
+			 }
+			 else if ( children[ i ][ "type" ].asString() == "type_qualifier" )
+			 {
+			 }
+			 else if ( children[ i ][ "type" ].asString() == "storage_class_specifier" )
+			 {
+			 }
 		 }
-		 Type *retType = get<Type *>( codegen( children[ 0 ] ) );
-		 return retType;
+		 UNIMPLEMENTED( "declaration_specifiers_i" );
+		 //return VoidType();
+
+		 //  Type *retType = get<Type *>( codegen( children[ 0 ] ) );
+		 //  return retType;
 		 //  Builder.SetInsertPoint( currentBB );
 		 //  auto allocated = Builder.CreateAlloca( retType );
 		 //  allocated->setName( children[ 1 ][ 1 ].asString() );
 		 //  auto lv = new AllocaInst( retType, 0, children[ 1 ][ 1 ].asString(), currentBB );
 	 } },
-	{ "type_specifier", []( Json::Value &node ) -> AstType {
+	{ "type_specifier", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
 		 auto variableType = children[ 0 ][ 1 ].asString();
 		 std::map<std::string, std::function<Type *()>> typeTable = {
@@ -250,30 +271,80 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 		 }
 		 return typeTable[ variableType ]();
 	 } },
-	{ "init_declarator_list_i", []( Json::Value &node ) -> AstType {
+	{ "init_declarator_list_i", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
 
 		 for ( int i = 0; i < children.size(); i++ )
 		 {
 			 if ( !children[ i ][ "type" ].isNull() )
 			 {
-				 codegen( children[ i ] );
+				 codegen( children[ i ], arg );
 			 }
 		 }
-		 UNIMPLEMENTED();
-		 //return VoidType();
+		 return VoidType();
 	 } },
-	{ "init_declarator", []( Json::Value &node ) -> AstType {
-		 UNIMPLEMENTED();
+	{ "init_declarator", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 auto &children = node[ "children" ];
+		 for ( int i = 0; i < children.size(); i++ )
+		 {
+			 if ( !children[ i ][ "type" ].isNull() )
+			 {
+				 codegen( children[ i ], arg );
+			 }
+			 else if ( children[ i ][ 0 ].isString() == "IDENTIFIER" )
+			 {
+				 auto variableName = children[ i ][ 1 ].asString();
+				 auto allocated = Builder.CreateAlloca( arg );
+				 allocated->setName( variableName );
+				 symTable.insert( variableName, allocated );
+			 }
+		 }
+		 return VoidType();
 	 } },
-	{ "initializer", []( Json::Value &node ) -> AstType {
+	{ "direct_declarator", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 auto &children = node[ "children" ];
+		 for ( int i = 0; i < children.size(); i++ )
+		 {
+			 if ( !children[ i ][ "type" ].isNull() )
+			 {
+				 codegen( children[ i ], arg );
+			 }
+			 else if ( children[ i ][ 0 ].isString() == "IDENTIFIER" )
+			 {
+				 auto variableName = children[ i ][ 1 ].asString();
+				 auto allocated = Builder.CreateAlloca( arg );
+				 allocated->setName( variableName );
+				 symTable.insert( variableName, allocated );
+			 }
+		 }
+		 return VoidType();
+	 } },
+	{ "declarator", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 auto &children = node[ "children" ];
+		 for ( int i = 0; i < children.size(); i++ )
+		 {
+			 if ( !children[ i ][ "type" ].isNull() )
+			 {
+				 codegen( children[ i ], arg );
+			 }
+			 else if ( children[ i ][ 0 ].isString() == "IDENTIFIER" )
+			 {
+				 auto variableName = children[ i ][ 1 ].asString();
+				 auto allocated = Builder.CreateAlloca( arg );
+				 allocated->setName( variableName );
+				 symTable.insert( variableName, allocated );
+			 }
+		 }
+		 return VoidType();
+	 } },
+	{ "initializer", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 auto &children = node[ "children" ];
 		 if ( children[ 0 ][ "type" ].isNull() )
 		 {
 			 auto type = children[ 0 ][ 0 ].asString();
 			 if ( type == "CONSTANT" )
 			 {
-				 return children[ 0 ][ 1 ].asString();
+				 //return children[ 0 ][ 1 ].asString();
 			 }
 			 else if ( type == "IDENTIFIER" )
 			 {
@@ -286,13 +357,13 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 	 } }
 };
 
-AstType codegen( Json::Value &node )
+AstType codegen( Json::Value &node, const ArgsType &arg = VoidType() )
 {
 	std::string type = node[ "type" ].asString();
 	type = type.substr( 0, 4 ) == "Expr" ? "Expr" : type;
 	if ( handlers.find( type ) != handlers.end() )
 	{
-		return handlers[ type ]( node );
+		return handlers[ type ]( node, arg );
 	}
 	else
 	{
