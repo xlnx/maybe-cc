@@ -19,6 +19,7 @@
 
 #include "irgen.h"
 #include "util.h"
+#include "symbolMap.h"
 
 using namespace ffi;
 using namespace llvm;
@@ -30,6 +31,7 @@ static std::unique_ptr<Module> TheModule;
 static std::map<std::string, Value *> NamedValues;
 static Function *currentFunction;
 static BasicBlock *currentBB;
+static MsgList *infoList;
 
 struct VoidType
 {
@@ -69,7 +71,7 @@ std::map<std::string, std::function<Value *( Value *, Value * )>> binaryOps = {
 	{ "%", []( Value *lhs, Value *rhs ) { return Builder.CreateFRem( lhs, rhs ); } },
 };
 std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
-	{ "Function", []( Json::Value &node ) -> AstType {
+	{ "function_definition", []( Json::Value &node ) -> AstType {
 		 Json::Value &children = node[ "children" ];
 		 auto name = children[ 1 ][ 1 ].asString();
 		 Function *TheFunction = TheModule->getFunction( name );
@@ -194,9 +196,10 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 			 UNIMPLEMENTED( node.toStyledString() );
 		 }
 	 } },
-	{ "Block", []( Json::Value &node ) -> AstType {
+	{ "compound_statement", []( Json::Value &node ) -> AstType {
 		 auto &children = node[ "children" ];
 
+		 // Ignore the { and }
 		 for ( int i = 1; i < children.size() - 1; i++ )
 		 {
 			 codegen( children[ i ] );
@@ -204,17 +207,37 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 
 		 return VoidType();
 	 } },
-	{ "Decl", []( Json::Value &node ) -> AstType {
+	{ "declaration_list", []( Json::Value &node ) -> AstType {
 		 auto &children = node[ "children" ];
-		 Type *retType = get<Type *>( codegen( children[ 0 ] ) );
-		 Builder.SetInsertPoint( currentBB );
-		 auto allocated = Builder.CreateAlloca( retType );
-		 allocated->setName( children[ 1 ][ 1 ].asString() );
-		 //  auto lv = new AllocaInst( retType, 0, children[ 1 ][ 1 ].asString(), currentBB );
-
+		 for ( int i = 0; i < children.size(); i++ )
+		 {
+			 codegen( children[ i ] );
+		 }
 		 return VoidType();
 	 } },
-	{ "Type", []( Json::Value &node ) -> AstType {
+	{ "declaration", []( Json::Value &node ) -> AstType {
+		 auto &children = node[ "children" ];
+		 // Ignore the ;
+		 Type *type = get<Type *>( codegen( children[ 0 ] ) );
+
+		 UNIMPLEMENTED( "declaration to do" );
+		 return VoidType();
+	 } },
+	{ "declaration_specifiers_i", []( Json::Value &node ) -> AstType {
+		 auto &children = node[ "children" ];
+
+		 if ( children.size() != 1 )
+		 {
+			 infoList->add_msg( MSG_TYPE_ERROR, "muti type specifiers" );
+		 }
+		 Type *retType = get<Type *>( codegen( children[ 0 ] ) );
+		 return retType;
+		 //  Builder.SetInsertPoint( currentBB );
+		 //  auto allocated = Builder.CreateAlloca( retType );
+		 //  allocated->setName( children[ 1 ][ 1 ].asString() );
+		 //  auto lv = new AllocaInst( retType, 0, children[ 1 ][ 1 ].asString(), currentBB );
+	 } },
+	{ "type_specifier", []( Json::Value &node ) -> AstType {
 		 auto &children = node[ "children" ];
 		 auto variableType = children[ 0 ][ 1 ].asString();
 		 std::map<std::string, std::function<Type *()>> typeTable = {
@@ -226,6 +249,40 @@ std::map<std::string, std::function<AstType( Json::Value & )>> handlers = {
 			 UNIMPLEMENTED( "unimplemented type" );
 		 }
 		 return typeTable[ variableType ]();
+	 } },
+	{ "init_declarator_list_i", []( Json::Value &node ) -> AstType {
+		 auto &children = node[ "children" ];
+
+		 for ( int i = 0; i < children.size(); i++ )
+		 {
+			 if ( !children[ i ][ "type" ].isNull() )
+			 {
+				 codegen( children[ i ] );
+			 }
+		 }
+		 UNIMPLEMENTED();
+		 //return VoidType();
+	 } },
+	{ "init_declarator", []( Json::Value &node ) -> AstType {
+		 UNIMPLEMENTED();
+	 } },
+	{ "initializer", []( Json::Value &node ) -> AstType {
+		 auto &children = node[ "children" ];
+		 if ( children[ 0 ][ "type" ].isNull() )
+		 {
+			 auto type = children[ 0 ][ 0 ].asString();
+			 if ( type == "CONSTANT" )
+			 {
+				 return children[ 0 ][ 1 ].asString();
+			 }
+			 else if ( type == "IDENTIFIER" )
+			 {
+			 }
+		 }
+		 else
+		 {
+			 UNIMPLEMENTED( "initializer" );
+		 }
 	 } }
 };
 
@@ -250,6 +307,8 @@ char *gen_llvm_ir_cxx( const char *ast_json, MsgList &list )
 	Json::Reader reader;
 	Json::Value root;
 
+	infoList = &list;
+
 	TheModule = make_unique<Module>( "asd", TheContext );
 
 	if ( !reader.parse( ast_json, root ) ) return nullptr;
@@ -261,7 +320,7 @@ char *gen_llvm_ir_cxx( const char *ast_json, MsgList &list )
 
 	for ( int i = 0; i < 2; i++ )
 	{
-		list.add_msg( MSG_TYPE_WARNING, "To DO" );
+		infoList->add_msg( MSG_TYPE_WARNING, "To DO" );
 	}
 
 	std::string cxx_ir;
