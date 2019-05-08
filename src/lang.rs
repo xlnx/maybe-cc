@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-use myrpg::{ast::*, symbol::*, *};
+use myrpg::*;
 use regex::Regex;
 
 lazy_static! {
