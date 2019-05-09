@@ -49,6 +49,7 @@ public:
 
 	void add_type( Type *type, Json::Value const &ast )
 	{
+		// TODO( "typedef" );
 		if ( !this->type )
 		{
 			this->type = type;
