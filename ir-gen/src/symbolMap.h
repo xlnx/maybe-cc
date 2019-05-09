@@ -1,8 +1,7 @@
 #pragma once
 
-#include "llvm/IR/Value.h"
+#include "common.h"
 #include "qualifiedType.h"
-#include <deque>
 
 struct symbol
 {

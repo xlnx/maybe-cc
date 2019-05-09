@@ -1,8 +1,7 @@
 #include "common.h"
-
-#include "irgen.h"
-#include "utility.h"
+#include "global.h"
 #include "symbolMap.h"
+#include "qualifiedType.h"
 #include "declarationSpecifier.h"
 
 struct VoidType
@@ -483,7 +482,7 @@ AstType codegen( Json::Value &node, const ArgsType &arg )
 
 	static int ind = 0;
 
-	if ( stackTrace )
+	if ( stack_trace )
 	{
 		dbg( indent( ind++ ), "+ ", type );
 	}
@@ -491,7 +490,7 @@ AstType codegen( Json::Value &node, const ArgsType &arg )
 	if ( handlers.find( type ) != handlers.end() )
 	{
 		auto res = handlers[ type ]( node, arg );
-		if ( stackTrace )
+		if ( stack_trace )
 		{
 			dbg( indent( --ind ), "- ", type );
 		}

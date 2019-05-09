@@ -1,4 +1,5 @@
 #include "common.h"
+#include "symbolMap.h"
 
 LLVMContext TheContext;
 IRBuilder<> Builder( TheContext );
@@ -8,4 +9,4 @@ Function *currentFunction;
 BasicBlock *currentBB;
 MsgList *infoList;
 symbolTable symTable = symbolTable();
-bool stackTrace = false;
+bool stack_trace = false;
