@@ -62,6 +62,20 @@ extern bool stackTrace;
 		throw( 0 ); \
 	} while ( 0 )
 
+#define ASSERT_FN( T, ... )                                            \
+	( []( Json::Value &node, const ArgsType &arg ) -> AstType {        \
+		auto ___ = ( [&] -> AstType { __VA_ARGS__ } )();               \
+		try                                                            \
+		{                                                              \
+			auto &____ = get<T>( ___ );                                \
+		}                                                              \
+		catch ( ... )                                                  \
+		{                                                              \
+			INTERNAL_ERROR( "function return type assertion failed" ); \
+		}                                                              \
+		return ___;                                                    \
+	} )
+
 inline void fmt_helper( std::ostringstream &os )
 {
 }

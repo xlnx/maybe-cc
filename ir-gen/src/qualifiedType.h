@@ -5,9 +5,13 @@
 struct Qualified
 {
 	Type *type;
+	bool is_const;
+	bool is_volatile;
 
-	Qualified( Type *type ) :
-	  type( type )
+	Qualified( Type *type, bool is_const = false, bool is_volatile = false ) :
+	  type( type ),
+	  is_const( is_const ),
+	  is_volatile( is_volatile )
 	{
 	}
 
@@ -23,10 +27,28 @@ class QualifiedType
 private:
 	std::vector<std::shared_ptr<Qualified>> list;
 
+	QualifiedType() = default;
+
 public:
-	Type *get_type() const
+	QualifiedType( Type *type )
+	{
+		list.emplace_back( std::make_shared<Qualified>( type ) );
+	}
+
+	operator Type *() const
 	{
 		return list.back()->type;
+	}
+
+	Type *operator->() const
+	{
+		return this->list.back()->type;
+	}
+
+	template <typename T>
+	T *as() const
+	{
+		return static_cast<T *>( (Type *)*this );
 	}
 
 	friend std::ostream &operator<<( std::ostream &os, const QualifiedType &type );
@@ -53,13 +75,8 @@ public:
 
 struct QualifiedPointer : Qualified
 {
-	bool is_const;
-	bool is_volatile;
-
-	QualifiedPointer( Type *base_type, bool is_const, bool is_volatile ) :
-	  Qualified( PointerType::getUnqual( base_type ) ),
-	  is_const( is_const ),
-	  is_volatile( is_volatile )
+	QualifiedPointer( Type *base_type, bool is_const = false, bool is_volatile = false ) :
+	  Qualified( PointerType::getUnqual( base_type ), is_const, is_volatile )
 	{
 	}
 };
@@ -80,7 +97,36 @@ private:
 	static std::vector<Type *> map_type( const std::vector<QualifiedDecl> &args )
 	{
 		std::vector<Type *> new_args;
-		for ( auto arg : args ) new_args.push_back( arg.type.get_type() );
+		for ( auto arg : args ) new_args.push_back( arg.type );
+		return new_args;
+	}
+};
+
+struct QualifiedStruct : Qualified
+{
+	std::map<std::string, QualifiedType> comps;
+
+	QualifiedStruct( const std::vector<QualifiedDecl> &comps ) :
+	  Qualified( StructType::get( TheContext, map_comp( comps ), false ) )
+	{
+		for ( auto &comp : comps )
+		{
+			if ( comp.name.is_some() )
+			{
+				this->comps.emplace( comp.name.unwrap(), comp.type );
+			}
+			else
+			{
+				infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything" );
+			}
+		}
+	}
+
+private:
+	static std::vector<Type *> map_comp( const std::vector<QualifiedDecl> &comps )
+	{
+		std::vector<Type *> new_args;
+		for ( auto arg : comps ) new_args.push_back( arg.type );
 		return new_args;
 	}
 };
@@ -101,7 +147,7 @@ public:
 	}
 	QualifiedType build()
 	{
-		auto type = QualifiedType{};
+		QualifiedType type;
 		type.list = std::move( list );
 		return type;
 	}
