@@ -229,8 +229,15 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 			  {
 				  Json::Value *struct_decl;
 				  auto la = children[ 1 ][ 0 ].asString();
-				  auto struct_ty = get<QualifiedType>( codegen( children[ la == "IDENTIFIER" ? 3 : 2 ] ) );
-				  TODO( "add typedef" );
+				  auto has_id = la == "IDENTIFIER";
+				  auto struct_ty = get<QualifiedType>( codegen( children[ has_id ? 3 : 2 ] ) );
+				  if ( has_id )
+				  {
+					  TODO( "add typedef" );
+					  //   auto name = children[ 1 ][ 1 ].asString();
+					  //   struct_ty->
+					  //   StructType::create( name, struct_ty );
+				  }
 				  return struct_ty;
 			  }
 		  }

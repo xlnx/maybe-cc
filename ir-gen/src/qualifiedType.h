@@ -135,7 +135,7 @@ struct QualifiedStruct : Qualified
 	std::map<std::string, QualifiedType> comps;
 
 	QualifiedStruct( const std::vector<QualifiedDecl> &comps ) :
-	  Qualified( StructType::get( TheContext, map_comp( comps ), false ) )
+	  Qualified( StructType::create( TheContext, map_comp( comps ) ) )
 	{
 		for ( auto &comp : comps )
 		{
