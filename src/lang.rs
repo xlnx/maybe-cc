@@ -263,29 +263,36 @@ lang! {
         TYPE_NAME
     ],
     struct_or_union_specifier => [
-        struct_or_union IDENTIFIER "{" struct_declaration_list "}",
-        struct_or_union "{" struct_declaration_list "}",
+        struct_or_union IDENTIFIER "{" struct_declaration_list_i "}",
+        struct_or_union "{" struct_declaration_list_i "}",
         struct_or_union IDENTIFIER
     ],
     struct_or_union => [
-        "struct", "union"
+        "struct" |@flatten|, "union" |@flatten|
+    ],
+    struct_declaration_list_i => [
+        struct_declaration_list
     ],
     struct_declaration_list => [
-        struct_declaration,
-        struct_declaration_list struct_declaration
+        struct_declaration |@flatten|,
+        struct_declaration_list struct_declaration |@flatten|
     ],
     struct_declaration => [
-        specifier_qualifier_list struct_declarator_list ";"
+        specifier_qualifier_list_i struct_declarator_list ";",
+        specifier_qualifier_list_i ";"
+    ],
+    specifier_qualifier_list_i => [
+        specifier_qualifier_list
     ],
     specifier_qualifier_list => [
-        type_specifier specifier_qualifier_list,
-        type_specifier,
-        type_qualifier specifier_qualifier_list,
-        type_qualifier
+        type_specifier specifier_qualifier_list |@flatten|,
+        type_specifier |@flatten|,
+        type_qualifier specifier_qualifier_list |@flatten|,
+        type_qualifier |@flatten|
     ],
     struct_declarator_list => [
-        struct_declarator,
-        struct_declarator_list "," struct_declarator
+        struct_declarator |@flatten|,
+        struct_declarator_list "," struct_declarator |@flatten|
     ],
     struct_declarator => [
         declarator,

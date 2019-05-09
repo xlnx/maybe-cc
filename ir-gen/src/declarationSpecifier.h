@@ -19,7 +19,7 @@
 class DeclarationSpecifiers
 {
 private:
-	llvm::Type *type = nullptr;
+	Option<QualifiedType> type;
 	unsigned attrs = 0;
 
 private:
@@ -47,9 +47,9 @@ private:
 public:
 	DeclarationSpecifiers() = default;
 
-	void add_type( Type *type, Json::Value const &ast )
+	void add_type( const QualifiedType &type, Json::Value const &ast )
 	{
-		if ( !this->type )
+		if ( this->type.is_none() )
 		{
 			this->type = type;
 		}
@@ -77,7 +77,7 @@ public:
 		return ( this->attrs & attr ) != 0;
 	}
 
-	Type *get_type() const
+	Option<QualifiedType> const &get_type() const
 	{
 		return this->type;
 	}
@@ -90,13 +90,13 @@ public:
 			HALT();
 		}
 		auto type = this->type;
-		if ( !type )
+		if ( type.is_none() )
 		{
 			type = Type::getInt32Ty( TheContext );
 			infoList->add_msg( MSG_TYPE_WARNING, "type defaults to `int`", ast );
 		}
 		auto builder = QualifiedTypeBuilder();
-		builder.add_level( std::make_shared<Qualified>( type ) );
+		builder.add_level( std::make_shared<Qualified>( type.unwrap() ) );
 		return builder;
 	}
 
@@ -104,7 +104,7 @@ public:
 	{
 		os << "{ ";
 
-		if ( declspec.type ) os << "<type> ";
+		if ( declspec.type.is_some() ) os << "<type> ";
 
 		if ( declspec.attrs & SC_TYPEDEF ) os << "typedef ";
 		if ( declspec.attrs & SC_EXTERN ) os << "extern ";
