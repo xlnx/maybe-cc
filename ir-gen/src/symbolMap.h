@@ -1,11 +1,12 @@
 #pragma once
 
 #include "llvm/IR/Value.h"
+#include "qualifiedType.h"
 #include <deque>
 
 struct symbol
 {
-	llvm::Value *member;
+	variant<llvm::Value *, QualifiedType> member;
 	int level;
 };
 
@@ -43,6 +44,14 @@ public:
 		symMap[ str ] = target;
 	}
 
+	void insert( const std::string &str, int level, QualifiedType type )
+	{
+		symbol *target = new symbol();
+		target->level = level;
+		target->member = type;
+		symMap[ str ] = target;
+	}
+
 private:
 	std::map<std::string, symbol *> symMap;
 };
@@ -70,6 +79,12 @@ public:
 			}
 		}
 		return nullptr;
+	}
+
+	void insert( const std::string &str, QualifiedType type )
+	{
+		symbolMap &smap = symbolStack.back();
+		smap.insert( str, getLevel(), type );
 	}
 
 	void insert( const std::string &str, llvm::Value *llvmValue )
