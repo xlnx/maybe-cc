@@ -92,7 +92,7 @@ public:
 		auto type = this->type;
 		if ( type.is_none() )
 		{
-			type = Type::getInt32Ty( TheContext );
+			type = std::make_shared<Qualified>( Type::getInt32Ty( TheContext ) );
 			infoList->add_msg( MSG_TYPE_WARNING, "type defaults to `int`", ast );
 		}
 		auto builder = QualifiedTypeBuilder();

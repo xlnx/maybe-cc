@@ -16,6 +16,19 @@ struct Qualified
 	}
 
 	virtual ~Qualified() = default;
+
+	virtual void print( std::ostream &os ) const
+	{
+		if ( type->isIntegerTy() )
+		{
+			auto ty = static_cast<IntegerType *>( type );
+			os << "i" << ty->getBitWidth();
+		}
+		else
+		{
+			os << "Ty";
+		}
+	}
 };
 
 class QualifiedTypeBuilder;
@@ -30,9 +43,9 @@ private:
 	QualifiedType() = default;
 
 public:
-	QualifiedType( Type *type )
+	QualifiedType( const std::shared_ptr<Qualified> &type )
 	{
-		list.emplace_back( std::make_shared<Qualified>( type ) );
+		list.emplace_back( type );
 	}
 
 	operator Type *() const
@@ -79,6 +92,8 @@ struct QualifiedPointer : Qualified
 	  Qualified( PointerType::getUnqual( base_type ), is_const, is_volatile )
 	{
 	}
+
+	void print( std::ostream &os ) const override { os << "Ptr: "; }
 };
 
 struct QualifiedType;
@@ -91,6 +106,16 @@ struct QualifiedFunction : Qualified
 	  Qualified( FunctionType::get( result_type, map_type( args ), false ) ),
 	  args( args )
 	{
+	}
+
+	void print( std::ostream &os ) const override
+	{
+		os << "Fn (";
+		for ( auto arg : this->args )
+		{
+			os << arg << ", ";
+		}
+		os << "): ";
 	}
 
 private:
@@ -120,6 +145,16 @@ struct QualifiedStruct : Qualified
 				infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything" );
 			}
 		}
+	}
+
+	void print( std::ostream &os ) const override
+	{
+		os << "Struct {";
+		for ( auto comp : this->comps )
+		{
+			os << comp.first << ": " << comp.second << ", ";
+		}
+		os << "}";
 	}
 
 private:
@@ -157,28 +192,7 @@ std::ostream &operator<<( std::ostream &os, const QualifiedType &type )
 {
 	for ( int i = type.list.size() - 1; i >= 0; --i )
 	{
-		auto ptr = type.list[ i ].get();
-		if ( auto fn = dynamic_cast<QualifiedFunction *>( ptr ) )
-		{
-			os << "Fn (";
-			for ( auto arg : fn->args )
-			{
-				os << arg << ", ";
-			}
-			os << "): ";
-		}
-		else if ( dynamic_cast<QualifiedPointer *>( ptr ) )
-		{
-			os << "Ptr: ";
-		}
-		else if ( dynamic_cast<Qualified *>( ptr ) )
-		{
-			os << "Ty";
-		}
-		else
-		{
-			INTERNAL_ERROR();
-		}
+		type.list[ i ]->print( os );
 	}
 	return os;
 }

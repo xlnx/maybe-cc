@@ -212,7 +212,7 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 			  {
 				  UNIMPLEMENTED( "unimplemented type" );
 			  }
-			  return typeTable[ type ]();
+			  return std::make_shared<Qualified>( typeTable[ type ]() );
 		  }
 	  } ) },
 	/* UNIMPLEMENTED -> QualifiedType */
@@ -230,8 +230,9 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 			  {
 				  Json::Value *struct_decl;
 				  auto la = children[ 1 ][ 0 ].asString();
-				  auto struct_ty = codegen( children[ la == "IDENTIFIER" ? 3 : 2 ] );
-				  UNIMPLEMENTED();
+				  auto struct_ty = get<QualifiedType>( codegen( children[ la == "IDENTIFIER" ? 3 : 2 ] ) );
+				  TODO( "add typedef" );
+				  return struct_ty;
 			  }
 		  }
 		  else
@@ -239,31 +240,36 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 			  UNIMPLEMENTED( "union" );
 		  }
 	  } ) },
-	{ "struct_declaration_list_i", []( Json::Value &node, const ArgsType &arg ) -> AstType {
-		 auto &roots = node[ "children" ];
+	{ "struct_declaration_list_i", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, const ArgsType &arg ) -> QualifiedType {
+		  auto &roots = node[ "children" ];
 
-		 for ( int i = 0; i < roots.size(); ++i )
-		 {
-			 auto &node = roots[ i ];
+		  std::vector<QualifiedDecl> decls;
 
-			 auto &children = node[ "children" ];
+		  for ( int i = 0; i < roots.size(); ++i )
+		  {
+			  auto &node = roots[ i ];
+			  auto &children = node[ "children" ];
 
-			 auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
+			  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
 
-			 for ( int i = 1; i < children.size(); ++i )
-			 {
-				 auto &child = children[ i ];
-				 if ( child.isObject() )
-				 {
-					 auto builder = declspec.into_type_builder( children[ 0 ] );
-					 auto decl = get<QualifiedDecl>( codegen( children[ i ], &builder ) );
-					 dbg( decl );
-				 }
-			 }
-		 }
+			  for ( int i = 1; i < children.size(); ++i )
+			  {
+				  auto &child = children[ i ];
+				  if ( child.isObject() )
+				  {
+					  auto builder = declspec.into_type_builder( children[ 0 ] );
+					  auto decl = get<QualifiedDecl>( codegen( children[ i ], &builder ) );
+					  decls.emplace_back( std::move( decl ) );
+				  }
+			  }
+		  }
 
-		 UNIMPLEMENTED();
-	 } },
+		  auto struct_ty = QualifiedType( std::make_shared<QualifiedStruct>( decls ) );
+
+		  dbg( struct_ty );
+
+		  return struct_ty;
+	  } ) },
 	/* VERIFIED -> DeclarationSpecifiers */
 	{ "specifier_qualifier_list_i", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 		 return handle_decl( node );
