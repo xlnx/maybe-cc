@@ -127,6 +127,9 @@ private:
 	}
 };
 
+extern LLVMContext TheContext;
+extern MsgList *infoList;
+
 struct QualifiedStruct : Qualified
 {
 	std::map<std::string, QualifiedType> comps;
@@ -188,7 +191,7 @@ public:
 	}
 };
 
-std::ostream &operator<<( std::ostream &os, const QualifiedType &type )
+inline std::ostream &operator<<( std::ostream &os, const QualifiedType &type )
 {
 	for ( int i = type.list.size() - 1; i >= 0; --i )
 	{
@@ -197,7 +200,7 @@ std::ostream &operator<<( std::ostream &os, const QualifiedType &type )
 	return os;
 }
 
-std::ostream &operator<<( std::ostream &os, const QualifiedDecl &decl )
+inline std::ostream &operator<<( std::ostream &os, const QualifiedDecl &decl )
 {
 	os << decl.name << " = " << decl.type;
 	return os;

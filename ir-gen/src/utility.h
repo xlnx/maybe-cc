@@ -1,6 +1,7 @@
 #pragma once
 
-#include "common.h"
+#include <variant.hpp>
+#include <iostream>
 
 struct NoneOpt
 {
@@ -10,7 +11,7 @@ template <typename T>
 class Option
 {
 private:
-	variant<T, NoneOpt> val;
+	nonstd::variant<T, NoneOpt> val;
 
 public:
 	Option() :
@@ -47,11 +48,11 @@ public:
 	}
 	const T &unwrap() const
 	{
-		return get<T>( val );
+		return nonstd::get<T>( val );
 	}
 	T &unwrap()
 	{
-		return get<T>( val );
+		return nonstd::get<T>( val );
 	}
 
 	friend std::ostream &operator<<( std::ostream &os, const Option &opt )
@@ -70,14 +71,16 @@ private:
 	bool old_flag;
 
 public:
-	StackTrace( bool flag = true ) :
-	  old_flag( stackTrace )
+	StackTrace( bool flag = true )
 	{
-		stackTrace = flag;
+		extern bool stack_trace;
+		old_flag = stack_trace;
+		stack_trace = flag;
 	}
 	~StackTrace()
 	{
-		stackTrace = old_flag;
+		extern bool stack_trace;
+		stack_trace = old_flag;
 	}
 
 	StackTrace( StackTrace && ) = delete;
@@ -85,3 +88,28 @@ public:
 	StackTrace &operator=( StackTrace && ) = delete;
 	StackTrace &operator=( const StackTrace & ) = delete;
 };
+
+inline void fmt_helper( std::ostringstream &os )
+{
+}
+
+template <typename T, typename... Args>
+void fmt_helper( std::ostringstream &os, T &&x, Args &&... args )
+{
+	os << std::forward<T>( x );  // << " ";
+	fmt_helper( os, std::forward<Args>( args )... );
+}
+
+template <typename... Args>
+std::string fmt( Args &&... args )
+{
+	std::ostringstream os;
+	fmt_helper( os, std::forward<Args>( args )... );
+	return os.str();
+}
+
+template <typename... Args>
+void dbg( Args &&... args )
+{
+	std::cerr << fmt( std::forward<Args>( args )... ) << std::endl;
+}
