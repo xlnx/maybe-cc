@@ -100,6 +100,10 @@ public:
 			infoList->add_msg( MSG_TYPE_ERROR, "multiple type specifiers", ast );
 			HALT();
 		}
+		if ( ( this->attrs & attr ) != 0 )
+		{
+			infoList->add_msg( MSG_TYPE_WARNING, fmt( "duplicate `", name, "` type specifier" ), ast );
+		}
 		this->attrs |= attr;
 		if ( ( this->attrs & TM_LONG ) && ( this->attrs & TM_SHORT ) )
 		{
@@ -140,12 +144,35 @@ public:
 
 			if ( ( attrs & TYPE_SPECIFIER ) != 0 )
 			{
-				switch ( attrs & TYPE_SPECIFIER )
+				auto ty_spec = attrs & TYPE_SPECIFIER;
+				switch ( ty_spec )
 				{
-				case TS_VOID: base_type = TS_VOID; break;
-				case TS_CHAR: num_bits = 8; break;
-				case TS_FLOAT: base_type = TS_FLOAT; break;
-				case TS_DOUBLE: base_type = TS_FLOAT, num_bits = 64; break;
+				case TS_DOUBLE:
+				{
+					if ( ( attrs & ( TYPE_MODIFIER & ~TM_LONG ) ) != 0 )
+					{
+						infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
+					}
+					base_type = TS_FLOAT;
+					num_bits = 64;
+					break;
+				}
+				case TS_VOID:
+				case TS_CHAR:
+				case TS_FLOAT:
+				{
+					if ( ( attrs & TYPE_MODIFIER ) != 0 )
+					{
+						infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
+					}
+					switch ( ty_spec )
+					{
+					case TS_VOID: base_type = TS_VOID; break;
+					case TS_CHAR: num_bits = 8; break;
+					case TS_FLOAT: base_type = TS_FLOAT; break;
+					}
+					break;
+				}
 				}
 			}
 			if ( ( attrs & TYPE_MODIFIER ) != 0 )
@@ -170,13 +197,13 @@ public:
 			{
 				switch ( num_bits )
 				{
-				case 16: type = std::make_shared<Qualified>( Type::getHalfTy( TheContext ) );
-				case 32: type = std::make_shared<Qualified>( Type::getFloatTy( TheContext ) );
-				case 64: type = std::make_shared<Qualified>( Type::getDoubleTy( TheContext ) );
-				case 128: type = std::make_shared<Qualified>( Type::getFP128Ty( TheContext ) );
+				case 16: type = std::make_shared<Qualified>( Type::getHalfTy( TheContext ) ); break;
+				case 32: type = std::make_shared<Qualified>( Type::getFloatTy( TheContext ) ); break;
+				case 64: type = std::make_shared<Qualified>( Type::getDoubleTy( TheContext ) ); break;
+				case 128: type = std::make_shared<Qualified>( Type::getFP128Ty( TheContext ) ); break;
 				default:
 				{
-					UNIMPLEMENTED( "unknown floating point type" );
+					UNIMPLEMENTED( "unknown floating point type: f", num_bits );
 				}
 				}
 				break;

@@ -180,7 +180,7 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 		  }
 		  return VoidType();
 	  } ) },
-	/* VERIFIED */
+	/* VERIFIED -> void */
 	{ "declaration", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
 		  auto &children = node[ "children" ];
 
@@ -461,6 +461,7 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 
 		  return VoidType();
 	  } ) },
+	/* VERIFIED -> int */
 	{ "type_qualifier_list_i", pack_fn<VoidType, int>( []( Json::Value &node, VoidType const & ) -> int {
 		  auto &children = node[ "children" ];
 

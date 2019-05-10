@@ -479,7 +479,7 @@ lang! {
         declaration |@flatten|
     ],
     function_definition_prefix => [
-        declaration_specifiers_i declarator declaration_list |@flatten|  => @reduce |ast| {
+        declaration_specifiers_i declarator declaration_list |@flatten| => @reduce |ast| {
             if *IS_TYPEDEF.borrow() {
                 if let AstNode::Ast(ref ast) = ast.children[1] {
                     register_types(&ast);
