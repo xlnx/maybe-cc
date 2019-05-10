@@ -99,7 +99,7 @@ DeclarationSpecifiers handle_decl( Json::Value &node )
 std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>> handlers = {
 	{ "function_definition", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
 		  Json::Value &children = node[ "children" ];
-
+		  symTable.push();
 		  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
 
 		  if ( declspec.has_attribute( SC_TYPEDEF ) )
@@ -140,35 +140,33 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 		  }
 
 		  currentFunction = fn;
-
 		  BasicBlock *BB = BasicBlock::Create( TheContext, "entry", fn );
 		  currentBB = BB;
 		  Builder.SetInsertPoint( BB );
 
-		  codegen( children[ 2 ] );
+		  //To codegen block
+		  auto &basicBlock = children[ 2 ][ "children" ];
+		  for ( int i = 1; i < basicBlock.size() - 1; i++ )
+		  {
+			  codegen( basicBlock[ i ] );
+		  }
+
 		  verifyFunction( *fn );
 
+		  dbg( symTable );
+		  symTable.pop();
 		  return VoidType{};
-		  //  if ( auto RetVal = get<Value *>( codegen( Body ) ) )
-		  //  {
-		  // 	 Builder.CreateRet( RetVal );
-		  //
-
-		  // 	 return TheFunction;
-		  //  }
-
-		  //  TheFunction->eraseFromParent();
-		  //  return static_cast<Value *>( nullptr );
 	  } ) },
 	{ "compound_statement", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
 		  auto &children = node[ "children" ];
-
+		  symTable.push();
 		  // Ignore the { and }
 		  for ( int i = 1; i < children.size() - 1; i++ )
 		  {
 			  codegen( children[ i ] );
 		  }
-		  symTable.push();
+		  dbg( symTable );
+		  symTable.pop();
 		  return VoidType();
 	  } ) },
 	{ "declaration_list", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
@@ -367,6 +365,7 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 					  if ( child.isObject() )
 					  {
 						  auto decl = get<QualifiedDecl>( codegen( child ) );
+						  symTable.insert( decl.name.unwrap(), decl.type );
 						  args.emplace_back( decl );
 					  }
 				  }

@@ -2,7 +2,5 @@
 /build
 /target
 /tmp
-/tests/test.ii
-/tests/test.ll
 **/*.rs.bk
 /tests

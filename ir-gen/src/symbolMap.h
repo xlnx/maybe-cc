@@ -72,6 +72,11 @@ public:
 		symMap[ str ] = target;
 	}
 
+	std::map<std::string, Symbol *> &getMap()
+	{
+		return symMap;
+	}
+
 private:
 	std::map<std::string, Symbol *> symMap;
 };
@@ -126,9 +131,28 @@ public:
 		symbolStack.pop_back();
 	}
 
-	int getLevel()
+	int getLevel() const
 	{
 		return symbolStack.size() - 1;
+	}
+
+	std::map<std::string, Symbol *> &getContent( int level )
+	{
+		return symbolStack[ level ].getMap();
+	}
+
+	friend std::ostream &operator<<( std::ostream &os, SymbolTable &symTable )
+	{
+		int level = symTable.getLevel();
+		auto symMap = symTable.getContent( level );
+		os << "{\n";
+		for ( auto iter = symMap.begin(); iter != symMap.end(); iter++ )
+		{
+			os << "\tName is: " << iter->first << ";\n"
+			   << "\tContent index is: " << iter->second->member.index() << ";\n";
+		}
+		os << "}\n";
+		return os;
 	}
 
 private:
