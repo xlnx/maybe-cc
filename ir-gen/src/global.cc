@@ -8,5 +8,5 @@ std::map<std::string, Value *> NamedValues;
 Function *currentFunction;
 BasicBlock *currentBB;
 MsgList *infoList;
-symbolTable symTable = symbolTable();
+SymbolTable symTable = SymbolTable();
 bool stack_trace = false;

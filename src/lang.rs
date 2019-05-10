@@ -5,7 +5,8 @@ use regex::Regex;
 use std::collections::HashSet;
 
 ref_thread_local! {
-    static managed TYPE_MAP: HashSet<String> = HashSet::new();
+    static managed TYPE_SET: Vec<HashSet<String>> = vec![HashSet::new()];
+    static managed IS_TYPEDEF: bool = false;
 }
 
 lazy_static! {
@@ -46,7 +47,9 @@ fn register_types<T>(ast: &Ast<T>) {
                 }
                 AstNode::Token(ref token) => {
                     if token.symbol.as_str() == "IDENTIFIER" {
-                        TYPE_MAP.borrow_mut().insert(token.as_str().into());
+                        println!("{:?}", token.as_str());
+                        let len = TYPE_SET.borrow().len();
+                        TYPE_SET.borrow_mut()[len - 1].insert(token.as_str().into());
                     } else {
                         if let AstNode::Ast(ref ast) = ast.children[1] {
                             register_types(&ast);
@@ -63,6 +66,15 @@ fn register_types<T>(ast: &Ast<T>) {
             }
         }
     }
+}
+
+fn is_type(name: &String) -> bool {
+    for namesp in TYPE_SET.borrow().iter().rev() {
+        if namesp.contains(name) {
+            return true;
+        }
+    }
+    return false;
 }
 
 lang! {
@@ -94,7 +106,7 @@ lang! {
     IDENTIFIER => r"[a-zA-Z_]\w*\b"
         => |tok, ctrl| {
             let sym: String = tok.as_str().into();
-            if TYPE_MAP.borrow().contains(&sym) {
+            if is_type(&sym) {
                 tok.symbol = Symbol::from("TYPE_NAME").as_terminal();
             }
         },
@@ -212,18 +224,12 @@ lang! {
     ],
     declaration => [
         declaration_specifiers_i ";",
-        declaration_specifiers_i init_declarator_list ";" => @reduce |ast| {
-            if let AstNode::Ast(ref decl) = ast.children[0] {
-                if contains_typedef(&decl) {
-                    if let AstNode::Ast(ref init) = ast.children[1] {
-                        register_types(&init);
-                    }
-                }
-            }
-        }
+        declaration_specifiers_i init_declarator_list_i ";"
     ],
     declaration_specifiers_i => [
-        declaration_specifiers
+        declaration_specifiers => @reduce |ast| {
+            *IS_TYPEDEF.borrow_mut() = contains_typedef(&ast);
+        }
     ],
     declaration_specifiers => [
         storage_class_specifier |@flatten|,
@@ -232,6 +238,13 @@ lang! {
         type_specifier declaration_specifiers |@flatten|,
         type_qualifier |@flatten|,
         type_qualifier declaration_specifiers |@flatten|
+    ],
+    init_declarator_list_i => [
+        init_declarator_list |@flatten| => @reduce |ast| {
+            if *IS_TYPEDEF.borrow() {
+                register_types(&ast);
+            }
+        }
     ],
     init_declarator_list => [
         init_declarator |@flatten|,
@@ -242,29 +255,50 @@ lang! {
         declarator "=" initializer
     ],
     storage_class_specifier => [
-        "typedef",
-        "extern",
-        "static",
-        "auto",
-        "register"
+        "typedef" |@flatten|,
+        "extern" |@flatten|,
+        "static" |@flatten|,
+        "auto" |@flatten|,
+        "register" |@flatten|
     ],
-    type_specifier => [
-        "void",
-        "char",
-        "short",
-        "int",
-        "long",
-        "float",
-        "double",
-        "signed",
-        "unsigned",
-        struct_or_union_specifier,
-        enum_specifier,
+    userdefined_type_name => [
         TYPE_NAME
     ],
+    type_specifier => [
+        "void" |@flatten|,
+        "char" |@flatten|,
+        "short" |@flatten|,
+        "int" |@flatten|,
+        "long" |@flatten|,
+        "float" |@flatten|,
+        "double" |@flatten|,
+        "signed" |@flatten|,
+        "unsigned" |@flatten|,
+        struct_or_union_specifier |@flatten|,
+        enum_specifier |@flatten|,
+        userdefined_type_name |@flatten|
+    ],
+    enter_block => [
+        enter_block_trig "{" |@flatten|
+    ],
+    enter_block_trig => [
+        _ |@flatten| => @reduce |ast| {
+            TYPE_SET.borrow_mut().push(HashSet::new());
+        }
+    ],
+    leave_block => [
+        leave_block_trig "}" |@flatten| => @reduce |ast| {
+            TYPE_SET.borrow_mut().pop();
+        }
+    ],
+    leave_block_trig => [
+        _ |@flatten| => @reduce |ast| {
+            TYPE_SET.borrow_mut().pop();
+        }
+    ],
     struct_or_union_specifier => [
-        struct_or_union IDENTIFIER "{" struct_declaration_list_i "}",
-        struct_or_union "{" struct_declaration_list_i "}",
+        struct_or_union IDENTIFIER enter_block struct_declaration_list_i leave_block,
+        struct_or_union enter_block struct_declaration_list_i leave_block,
         struct_or_union IDENTIFIER
     ],
     struct_or_union => [
@@ -274,7 +308,7 @@ lang! {
         struct_declaration_list
     ],
     struct_declaration_list => [
-        struct_declaration |@flatten|,
+        _ |@flatten|,
         struct_declaration_list struct_declaration |@flatten|
     ],
     struct_declaration => [
@@ -300,8 +334,8 @@ lang! {
         declarator ":" constant_expression
     ],
     enum_specifier => [
-        "enum" "{" enumerator_list "}",
-        "enum" IDENTIFIER "{" enumerator_list "}",
+        "enum" enter_block enumerator_list leave_block,
+        "enum" IDENTIFIER enter_block enumerator_list leave_block,
         "enum" IDENTIFIER
     ],
     enumerator_list => [
@@ -313,7 +347,7 @@ lang! {
         IDENTIFIER "=" constant_expression
     ],
     type_qualifier => [
-        "const", "volatile"
+        "const" |@flatten|, "volatile" |@flatten|
     ],
     declarator => [
         pointer direct_declarator,
@@ -380,8 +414,8 @@ lang! {
     ],
     initializer => [
         assignment_expression,
-        "{" initializer_list "}",
-        "{" initializer_list "," "}"
+        enter_block initializer_list leave_block,
+        enter_block initializer_list "," leave_block
     ],
     initializer_list => [
         initializer,
@@ -401,14 +435,14 @@ lang! {
         "default" ":" statement
     ],
     compound_statement => [
-        "{" "}",
-        "{" statement_list "}",
-        "{" declaration_list "}",
-        "{" declaration_list statement_list "}"
+        enter_block leave_block,
+        enter_block statement_list leave_block,
+        enter_block declaration_list leave_block,
+        enter_block declaration_list statement_list leave_block
     ],
     declaration_list => [
-        declaration,
-        declaration_list declaration
+        declaration |@flatten|,
+        declaration_list declaration |@flatten|
     ],
     statement_list => [
         statement,
@@ -444,9 +478,24 @@ lang! {
         function_definition |@flatten|,
         declaration |@flatten|
     ],
+    function_definition_prefix => [
+        declaration_specifiers_i declarator declaration_list |@flatten|  => @reduce |ast| {
+            if *IS_TYPEDEF.borrow() {
+                if let AstNode::Ast(ref ast) = ast.children[1] {
+                    register_types(&ast);
+                }
+            }
+        },
+        declaration_specifiers_i declarator |@flatten| => @reduce |ast| {
+            if *IS_TYPEDEF.borrow() {
+                if let AstNode::Ast(ref ast) = ast.children[1] {
+                    register_types(&ast);
+                }
+            }
+        }
+    ],
     function_definition => [
-        declaration_specifiers_i declarator declaration_list compound_statement,
-        declaration_specifiers_i declarator compound_statement,
+        function_definition_prefix compound_statement,
         declarator declaration_list compound_statement,
         declarator compound_statement
     ]

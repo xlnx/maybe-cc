@@ -48,6 +48,11 @@ public:
 		list.emplace_back( type );
 	}
 
+	QualifiedType( const QualifiedType & ) = default;
+	QualifiedType( QualifiedType && ) = default;
+	QualifiedType &operator=( const QualifiedType & ) = default;
+	QualifiedType &operator=( QualifiedType && ) = default;
+
 	operator Type *() const
 	{
 		return list.back()->type;

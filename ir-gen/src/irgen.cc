@@ -84,15 +84,13 @@ DeclarationSpecifiers handle_decl( Json::Value &node )
 	for ( int i = 0; i < children.size(); ++i )
 	{
 		auto &child = children[ i ];
-		auto type = child[ "type" ].asString();
-		if ( type == "type_specifier" )
+		if ( child.isObject() )
 		{
 			declspec.add_type( get<QualifiedType>( codegen( child ) ), child );
 		}
 		else
 		{
-			auto &token = child[ "children" ][ 0 ][ 1 ];
-			declspec.add_attribute( token.asString(), token );
+			declspec.add_attribute( child[ 1 ].asString(), child );
 		}
 	}
 
@@ -104,6 +102,18 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 		  Json::Value &children = node[ "children" ];
 
 		  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
+
+		  if ( declspec.has_attribute( SC_TYPEDEF ) )
+		  {
+			  infoList->add_msg( MSG_TYPE_ERROR, "function definition declared `typedef`", children[ 0 ] );
+			  HALT();
+		  }
+		  if ( declspec.has_attribute( SC_REGISTER ) || declspec.has_attribute( SC_AUTO ) )
+		  {
+			  infoList->add_msg( MSG_TYPE_ERROR, "illegal storage class on function", children[ 0 ] );
+			  HALT();
+		  }
+
 		  auto builder = declspec.into_type_builder( children[ 0 ] );
 
 		  auto decl = get<QualifiedDecl>( codegen( children[ 1 ], &builder ) );
@@ -182,7 +192,47 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 			  if ( child.isObject() )
 			  {
 				  auto builder = declspec.into_type_builder( children[ 0 ] );
-				  codegen( children[ i ], &builder );
+				  auto &child = children[ i ];
+
+				  {
+					  auto &children = child[ "children" ];
+					  // name can never be empty because "declarator" != empty
+					  auto decl = get<QualifiedDecl>( codegen( children[ 0 ], &builder ) );
+					  auto type = decl.type;
+					  auto name = decl.name.unwrap();
+
+					  if ( declspec.has_attribute( SC_TYPEDEF ) )  // deal with typedef
+					  {
+						  if ( children.size() > 1 )  // decl with init
+						  {
+							  infoList->add_msg( MSG_TYPE_ERROR, "only variables can be initialized", child );
+							  HALT();
+						  }
+						  else
+						  {
+							  symTable.insert( name, type );
+						  }
+					  }
+					  else
+					  {
+						  TODO( "storage specifiers not handled" );
+
+						  // deal with decl
+						  auto alloc = Builder.CreateAlloca( type );
+						  alloc->setName( name );
+						  symTable.insert( name, alloc );
+
+						  if ( children.size() > 1 )  // decl with init
+						  {
+							  auto init = get<Value *>( codegen( children[ 2 ], &builder ) );
+							  Builder.CreateStore( alloc, init );
+						  }
+						  else
+						  {
+							  TODO( "deal with empty initializer list" );
+						  }
+					  }
+				  }
 			  }
 		  }
 
@@ -191,28 +241,6 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 	/* VERIFIED -> DeclarationSpecifiers */
 	{ "declaration_specifiers_i", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
 		  return handle_decl( node );
-	  } ) },
-	/* IMPLEMENTING -> QualifiedType */
-	{ "type_specifier", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
-		  auto &children = node[ "children" ];
-
-		  auto &child = children[ 0 ];
-		  if ( child.isObject() )
-		  {
-			  return get<QualifiedType>( codegen( child ) );
-		  }
-		  else
-		  {
-			  auto type = child[ 1 ].asString();
-			  std::map<std::string, std::function<Type *()>> typeTable = {
-				  { "int", []() { return Type::getInt32Ty( TheContext ); } }
-			  };
-			  if ( typeTable.find( type ) == typeTable.end() )
-			  {
-				  UNIMPLEMENTED( "unimplemented type" );
-			  }
-			  return std::make_shared<Qualified>( typeTable[ type ]() );
-		  }
 	  } ) },
 	/* UNIMPLEMENTED -> QualifiedType */
 	{ "struct_or_union_specifier", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
@@ -232,11 +260,11 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 				  auto has_id = la == "IDENTIFIER";
 				  auto struct_ty = get<QualifiedType>( codegen( children[ has_id ? 3 : 2 ] ) );
 				  if ( has_id )
-				  {
-					  TODO( "add typedef" );
-					  //   auto name = children[ 1 ][ 1 ].asString();
-					  //   struct_ty->
-					  //   StructType::create( name, struct_ty );
+				  {  // struct A without typedefs is named "struct.A"
+					  auto name = "struct." + children[ 1 ][ 1 ].asString();
+					  struct_ty.as<StructType>()->setName( name );
+
+					  symTable.insert( name, struct_ty );
 				  }
 				  return struct_ty;
 			  }
@@ -246,7 +274,7 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 			  UNIMPLEMENTED( "union" );
 		  }
 	  } ) },
-	{ "struct_declaration_list_i", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, const ArgsType &arg ) -> QualifiedType {
+	{ "struct_declaration_list_i", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
 		  auto &roots = node[ "children" ];
 
 		  std::vector<QualifiedDecl> decls;
@@ -272,14 +300,31 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 
 		  auto struct_ty = QualifiedType( std::make_shared<QualifiedStruct>( decls ) );
 
-		  dbg( struct_ty );
-
 		  return struct_ty;
 	  } ) },
 	/* VERIFIED -> DeclarationSpecifiers */
-	{ "specifier_qualifier_list_i", []( Json::Value &node, const ArgsType &arg ) -> AstType {
-		 return handle_decl( node );
-	 } },
+	{ "specifier_qualifier_list_i", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
+		  return handle_decl( node );
+	  } ) },
+	{ "userdefined_type_name", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
+		  auto name = node[ "children" ][ 0 ][ 1 ].asString();
+		  if ( auto sym = symTable.find( name ) )
+		  {
+			  if ( sym->is_type() )
+			  {
+				  return sym->as_type();
+			  }
+			  else
+			  {
+				  infoList->add_msg( MSG_TYPE_ERROR, fmt( "`", name, "` does not name a type" ) );
+				  HALT();
+			  }
+		  }
+		  else
+		  {
+			  INTERNAL_ERROR( "symbol `", name, "` not found in current scope" );
+		  }
+	  } ) },
 	/* UNIMPLEMENTED -> QualifiedDecl */
 	{ "struct_declarator", pack_fn<QualifiedTypeBuilder *, QualifiedDecl>( []( Json::Value &node, QualifiedTypeBuilder *const &builder ) -> QualifiedDecl {
 		  auto &children = node[ "children" ];
@@ -291,33 +336,6 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 		  {
 			  return get<QualifiedDecl>( codegen( children[ 0 ], builder ) );
 		  }
-	  } ) },
-	/* IMPLEMENTING -> QualifiedDecl */
-	{ "init_declarator", pack_fn<QualifiedTypeBuilder *, QualifiedDecl>( []( Json::Value &node, QualifiedTypeBuilder *const &builder ) -> QualifiedDecl {
-		  // with arg = QualifiedTypeBuilder *
-		  auto &children = node[ "children" ];
-		  // name can never be empty because "declarator" != empty
-		  auto decl = get<QualifiedDecl>( codegen( children[ 0 ], builder ) );
-		  auto type = decl.type;
-		  auto name = decl.name.unwrap();
-
-		  auto alloc = Builder.CreateAlloca( type );
-		  alloc->setName( name );
-		  symTable.insert( name, alloc );
-
-		  if ( children.size() > 1 )
-		  {
-			  auto init = get<Value *>( codegen( children[ 2 ], builder ) );
-			  Builder.CreateStore( alloc, init );
-		  }
-		  else
-		  {
-			  TODO( "deal with empty initializer list" );
-		  }
-
-		  auto res = QualifiedDecl( type, name );
-		  //  dbg( "in init_declarator: ", res );
-		  return res;
 	  } ) },
 	/* UNIMPLMENTED -> QualifiedDecl */
 	{ "direct_declarator", pack_fn<QualifiedTypeBuilder *, QualifiedDecl>( []( Json::Value &node, QualifiedTypeBuilder *const &builder ) -> QualifiedDecl {
