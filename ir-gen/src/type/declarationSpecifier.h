@@ -1,7 +1,6 @@
 #pragma once
 
-#include "common.h"
-#include "qualifiedType.h"
+#include "builder.h"
 
 #define SC_TYPEDEF 0x10
 #define SC_EXTERN 0x20
@@ -24,10 +23,11 @@
 
 #define TM_SHORT 0x100000
 #define TM_LONG 0x200000
-#define TM_SIGNED 0x400000
-#define TM_UNSIGNED 0x800000
+#define TM_LONG_LONG 0x400000
+#define TM_SIGNED 0x800000
+#define TM_UNSIGNED 0x1000000
 
-#define TYPE_MODIFIER 0xf00000
+#define TYPE_MODIFIER 0xff00000
 #define TYPE_SPECIFIER 0xff000
 
 class DeclarationSpecifiers
@@ -76,6 +76,11 @@ public:
 
 	void add_type( const QualifiedType &type, Json::Value const &ast )
 	{
+		if ( ( this->attrs & TYPE_MODIFIER ) != 0 )
+		{
+			infoList->add_msg( MSG_TYPE_ERROR, "type modifiers cannot be used on boxed types", ast );
+			HALT();
+		}
 		if ( ( this->type.is_none() ) && !( this->attrs & TYPE_SPECIFIER ) )
 		{
 			this->type = type;
@@ -100,12 +105,30 @@ public:
 			infoList->add_msg( MSG_TYPE_ERROR, "multiple type specifiers", ast );
 			HALT();
 		}
+		if ( ( attr & TYPE_MODIFIER ) && this->type.is_some() )
+		{
+			infoList->add_msg( MSG_TYPE_ERROR, "type modifiers cannot be used on boxed types", ast );
+			HALT();
+		}
+		if ( attr == TM_LONG )
+		{
+			if ( ( this->attrs & TM_LONG_LONG ) != 0 )
+			{
+				infoList->add_msg( MSG_TYPE_ERROR, "cannot combine with previous `long long` declaration specifier", ast );
+				HALT();
+			}
+			else if ( ( this->attrs & TM_LONG ) != 0 )
+			{
+				this->attrs &= ~TM_LONG;
+				attr = TM_LONG_LONG;
+			}
+		}
 		if ( ( this->attrs & attr ) != 0 )
 		{
 			infoList->add_msg( MSG_TYPE_WARNING, fmt( "duplicate `", name, "` type specifier" ), ast );
 		}
 		this->attrs |= attr;
-		if ( ( this->attrs & TM_LONG ) && ( this->attrs & TM_SHORT ) )
+		if ( ( this->attrs & ( TM_LONG | TM_LONG_LONG ) ) && ( this->attrs & TM_SHORT ) )
 		{
 			infoList->add_msg( MSG_TYPE_ERROR, "`long short` is invalid", ast );
 			HALT();
@@ -134,99 +157,81 @@ public:
 
 	QualifiedTypeBuilder into_type_builder( Json::Value const &ast ) const
 	{
-		Option<QualifiedType> type = this->type;
+		bool is_const = ( this->attrs & TQ_CONST ) != 0;
+		bool is_volatile = ( this->attrs & TQ_VOLATILE ) != 0;
 
-		if ( type.is_none() && ( attrs & ( TYPE_SPECIFIER | TYPE_MODIFIER ) ) != 0 )
+		if ( this->type.is_none() )
 		{
-			auto base_type = TS_INT;
-			int num_bits = 32;
-			bool is_signed = true;
-
-			if ( ( attrs & TYPE_SPECIFIER ) != 0 )
+			if ( ( attrs & ( TYPE_SPECIFIER | TYPE_MODIFIER ) ) != 0 )
 			{
-				auto ty_spec = attrs & TYPE_SPECIFIER;
-				switch ( ty_spec )
+				auto base_type = TS_INT;
+				int num_bits = 32;
+				bool is_signed = true;
+
+				if ( ( attrs & TYPE_SPECIFIER ) != 0 )
 				{
-				case TS_DOUBLE:
-				{
-					if ( ( attrs & ( TYPE_MODIFIER & ~TM_LONG ) ) != 0 )
-					{
-						infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
-					}
-					base_type = TS_FLOAT;
-					num_bits = 64;
-					break;
-				}
-				case TS_VOID:
-				case TS_CHAR:
-				case TS_FLOAT:
-				{
-					if ( ( attrs & TYPE_MODIFIER ) != 0 )
-					{
-						infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
-					}
+					auto ty_spec = attrs & TYPE_SPECIFIER;
 					switch ( ty_spec )
 					{
-					case TS_VOID: base_type = TS_VOID; break;
-					case TS_CHAR: num_bits = 8; break;
-					case TS_FLOAT: base_type = TS_FLOAT; break;
+					case TS_DOUBLE:
+					{
+						if ( ( attrs & ( TYPE_MODIFIER & ~TM_LONG ) ) != 0 )
+						{
+							infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
+						}
+						base_type = TS_FLOAT;
+						num_bits = 64;
+						break;
 					}
-					break;
+					case TS_VOID:
+					case TS_CHAR:
+					case TS_FLOAT:
+					{
+						if ( ( attrs & TYPE_MODIFIER ) != 0 )
+						{
+							infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
+						}
+						switch ( ty_spec )
+						{
+						case TS_VOID: base_type = TS_VOID; break;
+						case TS_CHAR: num_bits = 8; break;
+						case TS_FLOAT: base_type = TS_FLOAT; break;
+						default: INTERNAL_ERROR();
+						}
+						break;
+					}
+					}
 				}
-				}
-			}
-			if ( ( attrs & TYPE_MODIFIER ) != 0 )
-			{  // only modifier
-				if ( ( attrs & TM_SHORT ) != 0 ) num_bits = num_bits >> 1;
-				if ( ( attrs & TM_LONG ) != 0 ) num_bits = num_bits << 1;
+				if ( ( attrs & TYPE_MODIFIER ) != 0 )
+				{  // only modifier
+					if ( ( attrs & TM_SHORT ) != 0 ) num_bits = num_bits >> 1;
+					if ( ( attrs & TM_LONG ) != 0 ) num_bits = num_bits << 1;
+					if ( ( attrs & TM_LONG_LONG ) != 0 ) num_bits = num_bits << 1;
 
-				if ( ( attrs & TM_SIGNED ) != 0 ) is_signed = true;
-				if ( ( attrs & TM_UNSIGNED ) != 0 ) is_signed = false;
-			}
-			switch ( base_type )
-			{
-			case TS_VOID: type = std::make_shared<Qualified>( Type::getVoidTy( TheContext ) ); break;
-			case TS_INT:
-			{
-				auto llvm_ty = Type::getIntNTy( TheContext, num_bits );
-				TODO( "signed unsigned not implemented" );
-				type = std::make_shared<Qualified>( llvm_ty );
-				break;
-			}
-			case TS_FLOAT:
-			{
-				switch ( num_bits )
-				{
-				case 16: type = std::make_shared<Qualified>( Type::getHalfTy( TheContext ) ); break;
-				case 32: type = std::make_shared<Qualified>( Type::getFloatTy( TheContext ) ); break;
-				case 64: type = std::make_shared<Qualified>( Type::getDoubleTy( TheContext ) ); break;
-				case 128: type = std::make_shared<Qualified>( Type::getFP128Ty( TheContext ) ); break;
-				default:
-				{
-					UNIMPLEMENTED( "unknown floating point type: f", num_bits );
+					if ( ( attrs & TM_SIGNED ) != 0 ) is_signed = true;
+					if ( ( attrs & TM_UNSIGNED ) != 0 ) is_signed = false;
 				}
+				switch ( base_type )
+				{
+				case TS_VOID: return QualifiedTypeBuilder( std::make_shared<QualifiedVoid>( is_const, is_volatile ) ); break;
+				case TS_INT: return QualifiedTypeBuilder( std::make_shared<QualifiedInteger>( num_bits, is_signed, is_const, is_volatile ) ); break;
+				case TS_FLOAT: return QualifiedTypeBuilder( std::make_shared<QualifiedFloatingPoint>( num_bits, is_const, is_volatile ) ); break;
+				default: INTERNAL_ERROR();
 				}
-				break;
 			}
+			else
+			{
+				infoList->add_msg( MSG_TYPE_WARNING, "type defaults to `int`", ast );
+				return QualifiedTypeBuilder( std::make_shared<QualifiedInteger>( 32, true, is_const, is_volatile ) );
 			}
 		}
 		else
 		{
-			if ( ( attrs & TYPE_MODIFIER ) != 0 )
-			{
-				UNIMPLEMENTED( "qualify custom type" );
-			}
+			return QualifiedTypeBuilder(
+			  this->type.unwrap(),
+			  ( this->attrs & TQ_CONST ) != 0,
+			  ( this->attrs & TQ_VOLATILE ) != 0 );
 		}
-
-		if ( type.is_none() )
-		{
-			type = std::make_shared<Qualified>( Type::getInt32Ty( TheContext ) );
-			infoList->add_msg( MSG_TYPE_WARNING, "type defaults to `int`", ast );
-		}
-
-		auto builder = QualifiedTypeBuilder();
-		builder.add_level( std::make_shared<Qualified>( type.unwrap() ) );
-		return builder;
 	}
 
 	friend std::ostream &operator<<( std::ostream &os, const DeclarationSpecifiers &declspec )

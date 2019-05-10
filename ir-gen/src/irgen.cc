@@ -1,8 +1,7 @@
 #include "common.h"
 #include "global.h"
 #include "symbolMap.h"
-#include "qualifiedType.h"
-#include "declarationSpecifier.h"
+#include "type/def.h"
 
 struct VoidType
 {
@@ -200,6 +199,8 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 					  auto decl = get<QualifiedDecl>( codegen( children[ 0 ], &builder ) );
 					  auto type = decl.type;
 					  auto name = decl.name.unwrap();
+
+					  dbg( "declaration: ", decl );
 
 					  if ( declspec.has_attribute( SC_TYPEDEF ) )  // deal with typedef
 					  {
@@ -420,7 +421,7 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 		  else
 		  {
 			  auto decl = get<QualifiedDecl>( codegen( child, &builder ) );
-			  //  dbg( "in parameter_declaration: ", res );
+			  dbg( "in parameter_declaration: ", decl );
 			  return decl;
 		  }
 	  } ) },

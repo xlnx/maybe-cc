@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common.h"
-#include "qualifiedType.h"
+#include "type/def.h"
 
 struct Symbol
 {
