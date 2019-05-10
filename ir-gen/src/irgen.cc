@@ -145,30 +145,29 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 		  currentBB = BB;
 		  Builder.SetInsertPoint( BB );
 
-		  codegen( children[ 2 ] );
+		  //To codegen block
+		  auto &basicBlock = children[ 2 ][ "children" ];
+		  for ( int i = 1; i < basicBlock.size() - 1; i++ )
+		  {
+			  codegen( basicBlock[ i ] );
+		  }
+
 		  verifyFunction( *fn );
+
+		  dbg( symTable );
+		  symTable.pop();
 		  return VoidType{};
-		  //  if ( auto RetVal = get<Value *>( codegen( Body ) ) )
-		  //  {
-		  // 	 Builder.CreateRet( RetVal );
-		  //
-
-		  // 	 return TheFunction;
-		  //  }
-
-		  //  TheFunction->eraseFromParent();
-		  //  return static_cast<Value *>( nullptr );
 	  } ) },
 	{ "compound_statement", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
 		  auto &children = node[ "children" ];
-
+		  symTable.push();
 		  // Ignore the { and }
 		  for ( int i = 1; i < children.size() - 1; i++ )
 		  {
 			  codegen( children[ i ] );
 		  }
-
 		  dbg( symTable );
+		  symTable.pop();
 		  return VoidType();
 	  } ) },
 	{ "declaration_list", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
