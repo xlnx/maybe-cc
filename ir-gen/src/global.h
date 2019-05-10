@@ -10,5 +10,5 @@ extern std::map<std::string, Value *> NamedValues;
 extern Function *currentFunction;
 extern BasicBlock *currentBB;
 extern ffi::MsgList *infoList;
-extern symbolTable symTable;
+extern SymbolTable symTable;
 extern bool stack_trace;
