@@ -1,6 +1,6 @@
 #pragma once
 
-#include "builder.h"
+#include "type.h"
 
 #define SC_TYPEDEF 0x10
 #define SC_EXTERN 0x20
@@ -37,9 +37,9 @@ private:
 	unsigned attrs = 0;
 
 private:
-	int get_attr_from( const std::string &name ) const
+	int get_attr_from( const char *name ) const
 	{
-		static std::map<std::string, unsigned> attr_map = {
+		static LookupTable<unsigned> attr_map = {
 			{ "typedef", SC_TYPEDEF },
 			{ "extern", SC_EXTERN },
 			{ "static", SC_STATIC },
@@ -74,7 +74,7 @@ private:
 public:
 	DeclarationSpecifiers() = default;
 
-	void add_type( const QualifiedType &type, Json::Value const &ast )
+	DeclarationSpecifiers &add_type( const QualifiedType &type, Json::Value const &ast )
 	{
 		if ( ( this->attrs & TYPE_MODIFIER ) != 0 )
 		{
@@ -90,9 +90,10 @@ public:
 			infoList->add_msg( MSG_TYPE_ERROR, "multiple type specifiers", ast );
 			HALT();
 		}
+		return *this;
 	}
 
-	void add_attribute( const std::string &name, Json::Value const &ast )
+	DeclarationSpecifiers &add_attribute( const char *name, Json::Value const &ast )
 	{
 		auto attr = get_attr_from( name );
 		if ( ( attr & STORAGE_SPECIFIER ) && ( this->attrs & STORAGE_SPECIFIER ) )
@@ -138,9 +139,10 @@ public:
 			infoList->add_msg( MSG_TYPE_ERROR, "`signed unsigned` is invalid", ast );
 			HALT();
 		}
+		return *this;
 	}
 
-	bool has_attribute( const std::string &name ) const
+	bool has_attribute( const char *name ) const
 	{
 		auto attr = get_attr_from( name );
 		return ( this->attrs & attr ) != 0;
@@ -213,16 +215,16 @@ public:
 				}
 				switch ( base_type )
 				{
-				case TS_VOID: return QualifiedTypeBuilder( std::make_shared<QualifiedVoid>( is_const, is_volatile ) ); break;
-				case TS_INT: return QualifiedTypeBuilder( std::make_shared<QualifiedInteger>( num_bits, is_signed, is_const, is_volatile ) ); break;
-				case TS_FLOAT: return QualifiedTypeBuilder( std::make_shared<QualifiedFloatingPoint>( num_bits, is_const, is_volatile ) ); break;
+				case TS_VOID: return QualifiedTypeBuilder( std::make_shared<mty::Void>( is_const, is_volatile ) ); break;
+				case TS_INT: return QualifiedTypeBuilder( std::make_shared<mty::Integer>( num_bits, is_signed, is_const, is_volatile ) ); break;
+				case TS_FLOAT: return QualifiedTypeBuilder( std::make_shared<mty::FloatingPoint>( num_bits, is_const, is_volatile ) ); break;
 				default: INTERNAL_ERROR();
 				}
 			}
 			else
 			{
 				infoList->add_msg( MSG_TYPE_WARNING, "type defaults to `int`", ast );
-				return QualifiedTypeBuilder( std::make_shared<QualifiedInteger>( 32, true, is_const, is_volatile ) );
+				return QualifiedTypeBuilder( std::make_shared<mty::Integer>( 32, true, is_const, is_volatile ) );
 			}
 		}
 		else

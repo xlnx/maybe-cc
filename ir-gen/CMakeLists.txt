@@ -7,7 +7,9 @@ include_directories(
 )
 
 file(GLOB SOURCE 
+	./src/**/*.cc
 	./src/*.cc
+	./jsoncpp/**/*.cc
 	./jsoncpp/*.cc
 )
 

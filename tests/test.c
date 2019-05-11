@@ -1,12 +1,5 @@
 int main()
 {
-	int ( *a )( int x, int y );
-
-	struct test
-	{
-		int vc;
-	};
-
-	float *asd;
-	const volatile int *s;
+	int p, a, b[ 10 ];
+	a *p;
 }
