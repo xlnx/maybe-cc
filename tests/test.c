@@ -6,4 +6,7 @@ int main()
 	{
 		int vc;
 	};
+
+	float *asd;
+	const volatile int *s;
 }

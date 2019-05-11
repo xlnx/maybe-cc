@@ -219,6 +219,11 @@ std::map<std::string, std::function<AstType( Json::Value &, ArgsType const & )>>
 						  // deal with decl
 						  auto alloc = Builder.CreateAlloca( type );
 						  alloc->setName( name );
+						  if ( symTable.findThisLevel( name ) )
+						  {
+							  infoList->add_msg( MSG_TYPE_ERROR, "redefinition variable with a different type", child );
+							  HALT();
+						  }
 						  symTable.insert( name, alloc );
 
 						  if ( children.size() > 1 )  // decl with init

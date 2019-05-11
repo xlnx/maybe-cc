@@ -110,6 +110,17 @@ public:
 		return nullptr;
 	}
 
+	Symbol *findThisLevel( const std::string &str ) const
+	{
+		const SymbolMap &smap = symbolStack.back();
+		Symbol *sym = smap.find( str );
+		if ( sym != nullptr )
+		{
+			return sym;
+		}
+		return nullptr;
+	}
+
 	void insert( const std::string &str, const QualifiedType &type )
 	{
 		SymbolMap &smap = symbolStack.back();
