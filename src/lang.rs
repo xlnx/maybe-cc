@@ -165,63 +165,57 @@ lang! {
         unary_expression |@flatten|,
         "(" type_name ")" cast_expression
     ],
-    _binary_expression => [
-        cast_expression
+    multiplicative_expression_ => [
+        cast_expression |@flatten|,
+        multiplicative_expression_ "*" cast_expression,
+        multiplicative_expression_ "/" cast_expression,
+        multiplicative_expression_ "%" cast_expression
     ],
-    multiplicative_expression => [
-        _binary_expression |@flatten|,
-        multiplicative_expression "*" _binary_expression,
-        multiplicative_expression "/" _binary_expression,
-        multiplicative_expression "%" _binary_expression
+    additive_expression_ => [
+        multiplicative_expression_ |@flatten|,
+        additive_expression_ "+" multiplicative_expression_,
+        additive_expression_ "-" multiplicative_expression_
     ],
-    additive_expression => [
-        multiplicative_expression |@flatten|,
-        additive_expression "+" multiplicative_expression,
-        additive_expression "-" multiplicative_expression
+    shift_expression_ => [
+        additive_expression_ |@flatten|,
+        shift_expression_ "<<" additive_expression_,
+        shift_expression_ ">>" additive_expression_
     ],
-    shift_expression => [
-        additive_expression |@flatten|,
-        shift_expression "<<" additive_expression,
-        shift_expression ">>" additive_expression
+    relational_expression_ => [
+        shift_expression_ |@flatten|,
+        relational_expression_ "<" shift_expression_,
+        relational_expression_ ">" shift_expression_,
+        relational_expression_ "<=" shift_expression_,
+        relational_expression_ ">=" shift_expression_
     ],
-    relational_expression => [
-        shift_expression |@flatten|,
-        relational_expression "<" shift_expression,
-        relational_expression ">" shift_expression,
-        relational_expression "<=" shift_expression,
-        relational_expression ">=" shift_expression
+    equality_expression_ => [
+        relational_expression_ |@flatten|,
+        equality_expression_ "==" relational_expression_,
+        equality_expression_ "!=" relational_expression_
     ],
-    equality_expression => [
-        relational_expression |@flatten|,
-        equality_expression "==" relational_expression,
-        equality_expression "!=" relational_expression
+    and_expression_ => [
+        equality_expression_ |@flatten|,
+        and_expression_ "&" equality_expression_
     ],
-    and_expression => [
-        equality_expression |@flatten|,
-        and_expression "&" equality_expression
+    exclusive_or_expression_ => [
+        and_expression_ |@flatten|,
+        exclusive_or_expression_ "^" and_expression_
     ],
-    exclusive_or_expression => [
-        and_expression |@flatten|,
-        exclusive_or_expression "^" and_expression
+    inclusive_or_expression_ => [
+        exclusive_or_expression_ |@flatten|,
+        inclusive_or_expression_ "|" exclusive_or_expression_
     ],
-    inclusive_or_expression => [
-        exclusive_or_expression |@flatten|,
-        inclusive_or_expression "|" exclusive_or_expression
+    logical_and_expression_ => [
+        inclusive_or_expression_ |@flatten|,
+        logical_and_expression_ "&&" inclusive_or_expression_
     ],
-    logical_and_expression => [
-        inclusive_or_expression |@flatten|,
-        logical_and_expression "&&" inclusive_or_expression
-    ],
-    logical_or_expression => [
-        logical_and_expression |@flatten|,
-        logical_or_expression "||" logical_and_expression
-    ],
-    binary_expression => [
-        logical_or_expression
+    logical_or_expression_ => [
+        logical_and_expression_ |@flatten|,
+        logical_or_expression_ "||" logical_and_expression_
     ],
     conditional_expression => [
-        binary_expression |@flatten|,
-        binary_expression "?" expression ":" conditional_expression
+        logical_or_expression_ |@flatten|,
+        logical_or_expression_ "?" expression ":" conditional_expression
     ],
     assignment_expression => [
         conditional_expression |@flatten|,
