@@ -113,3 +113,18 @@ void dbg( Args &&... args )
 {
 	std::cerr << fmt( std::forward<Args>( args )... ) << std::endl;
 }
+
+namespace __impl
+{
+struct str_cmp_op
+{
+	bool operator()( char const *a, char const *b ) const
+	{
+		return std::strcmp( a, b ) < 0;
+	}
+};
+
+}  // namespace __impl
+
+template <typename T>
+using JumpTable = std::map<const char *, T, __impl::str_cmp_op>;

@@ -1,47 +1,7 @@
 #pragma once
 
-#include "qualified.h"
-
-class QualifiedTypeBuilder;
-
-class QualifiedType
-{
-	friend class QualifiedTypeBuilder;
-
-private:
-	std::vector<std::shared_ptr<Qualified>> list;
-
-	QualifiedType() = default;
-
-public:
-	QualifiedType( const std::shared_ptr<Qualified> &type )
-	{
-		list.emplace_back( type );
-	}
-
-	QualifiedType( const QualifiedType & ) = default;
-	QualifiedType( QualifiedType && ) = default;
-	QualifiedType &operator=( const QualifiedType & ) = default;
-	QualifiedType &operator=( QualifiedType && ) = default;
-
-	operator Type *() const
-	{
-		return list.back()->type;
-	}
-
-	Type *operator->() const
-	{
-		return this->list.back()->type;
-	}
-
-	template <typename T>
-	T *as() const
-	{
-		return static_cast<T *>( (Type *)*this );
-	}
-
-	friend std::ostream &operator<<( std::ostream &os, const QualifiedType &type );
-};
+#include "predef.h"
+#include "type.h"
 
 struct QualifiedDecl
 {
@@ -67,27 +27,35 @@ struct QualifiedType;
 class QualifiedTypeBuilder
 {
 private:
-	std::vector<std::shared_ptr<Qualified>> list;
+	std::vector<std::shared_ptr<mty::Qualified>> list;
 
 public:
 	QualifiedTypeBuilder() = default;
-	QualifiedTypeBuilder( const std::shared_ptr<Qualified> &type ) :
+	QualifiedTypeBuilder( const std::shared_ptr<mty::Qualified> &type ) :
 	  list{ type }
 	{
 	}
 	QualifiedTypeBuilder( const QualifiedType &type, bool is_const = false, bool is_volatile = false ) :
 	  list{ type.list }
 	{
-		if ( is_const || is_volatile )
+		auto idx = list.size() - 1;
+		while ( list[ idx ]->is_array_type() )
 		{
-			auto back = list.back()->clone();
-			back->is_const = is_const;
-			back->is_volatile = is_volatile;
-			list.back() = back;
+			idx -= 1;
+		}
+		for ( auto i = idx; i != list.size(); ++i )
+		{  // if typedef const/volatile array
+			auto item = list[ i ]->clone();
+			if ( i == idx )
+			{
+				item->is_const = item->is_const || is_const;
+				item->is_volatile = item->is_volatile || is_volatile;
+			}
+			list[ i ] = std::move( item );
 		}
 	}
 
-	void add_level( const std::shared_ptr<Qualified> &obj )
+	void add_level( const std::shared_ptr<mty::Qualified> &obj )
 	{
 		list.emplace_back( obj );
 	}
@@ -102,15 +70,6 @@ public:
 		return type;
 	}
 };
-
-inline std::ostream &operator<<( std::ostream &os, const QualifiedType &type )
-{
-	for ( int i = type.list.size() - 1; i >= 0; --i )
-	{
-		type.list[ i ]->print( os );
-	}
-	return os;
-}
 
 inline std::ostream &operator<<( std::ostream &os, const QualifiedDecl &decl )
 {

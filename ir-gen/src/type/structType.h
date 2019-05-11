@@ -1,13 +1,15 @@
 #pragma once
 
-#include "qualified.h"
+#include "predef.h"
 #include "builder.h"
 
-struct QualifiedStruct : Qualified
+namespace mty
+{
+struct Struct : Qualified
 {
 	std::map<std::string, QualifiedType> comps;
 
-	QualifiedStruct( const std::vector<QualifiedDecl> &comps ) :
+	Struct( const std::vector<QualifiedDecl> &comps ) :
 	  Qualified( StructType::create( TheContext, map_comp( comps ) ) )
 	{
 		for ( auto &comp : comps )
@@ -36,7 +38,7 @@ struct QualifiedStruct : Qualified
 
 	std::shared_ptr<Qualified> clone() const override
 	{
-		return std::make_shared<QualifiedStruct>( *this );
+		return std::make_shared<Struct>( *this );
 	}
 
 private:
@@ -47,3 +49,5 @@ private:
 		return new_args;
 	}
 };
+
+}  // namespace mty

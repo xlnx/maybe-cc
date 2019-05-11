@@ -111,7 +111,9 @@ lang! {
             }
         },
     TYPE_NAME => r"$^$^",
-    CONSTANT => r#"0[xX][0-9A-Fa-f]+(?:u|U|l|L)*?|[0-9]+(?:u|U|l|L)*?|[a-zA-Z_]?'(?:\\.|[^\\'])+'|[0-9]+[Ee][\+-]?[0-9]+(?:f|F|l|L)?|[0-9]*"."[0-9]+(?:[Ee][\+-]?[0-9]+)?(?:f|F|l|L)?"#,
+    INTEGER => r#"(:?0[xX][0-9A-Fa-f]+|\d+)(?:u|U|l|L)*"#,
+    CHAR => r#"[a-zA-Z_]?'(?:\\.|[^\\'])+'"#,
+    FLOATING_POINT => r#"(:?\d+[Ee][\+-]?\d+|(?:\d*\.\d+|\d+\.\d*)(?:[Ee][\+-]?\d+)?)(?:f|F|l|L)?"#,
     STRING_LITERAL => r#"[a-zA-Z_]?"(\\.|[^\\"])*"#
 
     ;;
@@ -122,9 +124,11 @@ lang! {
     ],
 
     primary_expression => [
-        IDENTIFIER |@flatten|,
-        CONSTANT |@flatten|,
-        STRING_LITERAL |@flatten|,
+        IDENTIFIER,
+        INTEGER,
+        CHAR,
+        FLOATING_POINT,
+        STRING_LITERAL,
         "(" expression ")"
     ],
     postfix_expression => [
@@ -150,7 +154,12 @@ lang! {
         "sizeof" "(" type_name ")"
     ],
     unary_operator => [
-        "&","*","+","-","~","!"
+        "&" |@flatten|,
+        "*" |@flatten|,
+        "+" |@flatten|,
+        "-" |@flatten|,
+        "~" |@flatten|,
+        "!" |@flatten|
     ],
     cast_expression => [
         unary_expression |@flatten|,
@@ -287,9 +296,7 @@ lang! {
         }
     ],
     leave_block => [
-        leave_block_trig "}" |@flatten| => @reduce |ast| {
-            TYPE_SET.borrow_mut().pop();
-        }
+        leave_block_trig "}" |@flatten|
     ],
     leave_block_trig => [
         _ |@flatten| => @reduce |ast| {
@@ -422,12 +429,12 @@ lang! {
         initializer_list "," initializer
     ],
     statement => [
-        labeled_statement,
-        compound_statement,
-        expression_statement,
-        selection_statement,
-        iteration_statement,
-        jump_statement
+        labeled_statement |@flatten|,
+        compound_statement |@flatten|,
+        expression_statement |@flatten|,
+        selection_statement |@flatten|,
+        iteration_statement |@flatten|,
+        jump_statement |@flatten|
     ],
     labeled_statement => [
         IDENTIFIER ":" statement,
@@ -445,8 +452,8 @@ lang! {
         declaration_list declaration |@flatten|
     ],
     statement_list => [
-        statement,
-        statement_list statement
+        statement |@flatten|,
+        statement_list statement |@flatten|
     ],
     expression_statement => [
         ";",

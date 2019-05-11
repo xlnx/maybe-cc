@@ -1,10 +1,12 @@
 #pragma once
 
-#include "qualified.h"
+#include "predef.h"
 
-struct QualifiedVoid : Qualified
+namespace mty
 {
-	QualifiedVoid( bool is_const = false, bool is_volatile = false ) :
+struct Void : Qualified
+{
+	Void( bool is_const = false, bool is_volatile = false ) :
 	  Qualified( Type::getVoidTy( TheContext ), is_const, is_volatile )
 	{
 	}
@@ -17,6 +19,8 @@ struct QualifiedVoid : Qualified
 
 	std::shared_ptr<Qualified> clone() const override
 	{
-		return std::make_shared<QualifiedVoid>( *this );
+		return std::make_shared<Void>( *this );
 	}
 };
+
+}  // namespace mty

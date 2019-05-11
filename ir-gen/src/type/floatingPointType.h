@@ -1,12 +1,14 @@
 #pragma once
 
-#include "qualified.h"
+#include "predef.h"
 
-struct QualifiedFloatingPoint : Qualified
+namespace mty
+{
+struct FloatingPoint : Qualified
 {
 	unsigned bits;
 
-	QualifiedFloatingPoint( unsigned bits, bool is_const = false, bool is_volatile = false ) :
+	FloatingPoint( unsigned bits, bool is_const = false, bool is_volatile = false ) :
 	  Qualified( Type::getFloatPtrTy( TheContext, bits ), is_const, is_volatile ),
 	  bits( bits )
 	{
@@ -20,7 +22,7 @@ struct QualifiedFloatingPoint : Qualified
 
 	std::shared_ptr<Qualified> clone() const override
 	{
-		return std::make_shared<QualifiedFloatingPoint>( *this );
+		return std::make_shared<FloatingPoint>( *this );
 	}
 
 private:
@@ -40,3 +42,5 @@ private:
 		}
 	}
 };
+
+}  // namespace mty
