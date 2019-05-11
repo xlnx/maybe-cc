@@ -33,6 +33,10 @@ public:
 	{
 		return type;
 	}
+	bool is_rvalue() const
+	{
+		return !is_lvalue;
+	}
 
 	QualifiedValue &value( Json::Value &ast )  // cast to rvalue
 	{
@@ -54,7 +58,7 @@ public:
 			}
 			else
 			{
-				infoList->add_msg( MSG_TYPE_ERROR, "not derefable", ast );
+				infoList->add_msg( MSG_TYPE_ERROR, "lvalue required for dereference", ast );
 				HALT();
 			}
 		}
@@ -79,5 +83,6 @@ public:
 	}
 
 public:
-	static void cast_binary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node );
+	static void cast_binary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool allow_float = true );
+	QualifiedValue &cast_into_storage( const TypeView &dst, Json::Value &node );
 };

@@ -7,11 +7,14 @@ namespace mty
 {
 struct Struct : Qualified
 {
+	static constexpr auto type = TypeName::StructType;
+
 	std::map<std::string, QualifiedType> comps;
 
 	Struct( const std::vector<QualifiedDecl> &comps ) :
 	  Qualified( StructType::create( TheContext, map_comp( comps ) ) )
 	{
+		type_name = type;
 		for ( auto &comp : comps )
 		{
 			if ( comp.name.is_some() )
@@ -39,6 +42,12 @@ struct Struct : Qualified
 	std::shared_ptr<Qualified> clone() const override
 	{
 		return std::make_shared<Struct>( *this );
+	}
+
+public:
+	bool impl_is_same_without_cv( const Qualified &other ) const override
+	{
+		UNIMPLEMENTED();
 	}
 
 private:

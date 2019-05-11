@@ -4,15 +4,8 @@
 #include "type/def.h"
 #include "value/def.h"
 
-namespace __impl
-{
-class SymbolMap;
-}
-
 struct Symbol
 {
-	friend class __impl::SymbolMap;
-
 	variant<
 	  QualifiedValue,
 	  QualifiedType>
@@ -106,8 +99,16 @@ public:
 		os << "{\n";
 		for ( auto iter = symMap.begin(); iter != symMap.end(); iter++ )
 		{
-			os << "\tName is: " << iter->first << ";\n"
-			   << "\tContent index is: " << iter->second.data.index() << ";\n";
+			os << "  " << iter->first;
+			if ( iter->second.is_value() )
+			{
+				os << " : " << iter->second.as_value().get_type();
+			}
+			else
+			{
+				os << " = " << iter->second.as_type();
+			}
+			os << "\n";
 		}
 		os << "}\n";
 		return os;

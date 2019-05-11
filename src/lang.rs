@@ -47,7 +47,6 @@ fn register_types<T>(ast: &Ast<T>) {
                 }
                 AstNode::Token(ref token) => {
                     if token.symbol.as_str() == "IDENTIFIER" {
-                        println!("{:?}", token.as_str());
                         let len = TYPE_SET.borrow().len();
                         TYPE_SET.borrow_mut()[len - 1].insert(token.as_str().into());
                     } else {
@@ -103,18 +102,18 @@ lang! {
         }
         ctrl.discard();
     },
+    TYPE_NAME => r"$^$^",
+    FLOATING_POINT => r#"\d+[Ee][\+-]?\d+[fFlL]?\b|\d*\.\d+[fFlL]?\b|\d*\.\d+[Ee][\+-]?\d+[fFlL]?\b|\d+\.\d*[Ee][\+-]?\d+[fFlL]?\b|\d+\.\d*[fFlL]?\b"#,
+    INTEGER => r#"0[xX][0-9A-Fa-f]+[uUlL]*\b|\d+[uUlL]*\b"#,
+    CHAR => r#"[a-zA-Z_]?'(:?[^\\']|\\.)*'"#,
+    STRING_LITERAL => r#"[a-zA-Z_]?"(:?[^\\"]|\\.)*""#,
     IDENTIFIER => r"[a-zA-Z_]\w*\b"
         => |tok, ctrl| {
             let sym: String = tok.as_str().into();
             if is_type(&sym) {
                 tok.symbol = Symbol::from("TYPE_NAME").as_terminal();
             }
-        },
-    TYPE_NAME => r"$^$^",
-    INTEGER => r#"(:?0[xX][0-9A-Fa-f]+|\d+)(?:u|U|l|L)*"#,
-    CHAR => r#"[a-zA-Z_]?'(?:\\.|[^\\'])+'"#,
-    FLOATING_POINT => r#"(:?\d+[Ee][\+-]?\d+|(?:\d*\.\d+|\d+\.\d*)(?:[Ee][\+-]?\d+)?)(?:f|F|l|L)?"#,
-    STRING_LITERAL => r#"[a-zA-Z_]?"(\\.|[^\\"])*"#
+        }
 
     ;;
 
@@ -219,10 +218,20 @@ lang! {
     ],
     assignment_expression => [
         conditional_expression |@flatten|,
-        unary_expression assignment_operator assignment_expression
+        conditional_expression assignment_operator assignment_expression
     ],
     assignment_operator => [
-        "=","*=","/=","%=","+=","-=","<<=",">>=","&=","^=","|="
+        "=" |@flatten|,
+        "*=" |@flatten|,
+        "/=" |@flatten|,
+        "%=" |@flatten|,
+        "+=" |@flatten|,
+        "-=" |@flatten|,
+        "<<=" |@flatten|,
+        ">>=" |@flatten|,
+        "&=" |@flatten|,
+        "^=" |@flatten|,
+        "|=" |@flatten|
     ],
     expression => [
         assignment_expression |@flatten|,
@@ -391,9 +400,12 @@ lang! {
         parameter_list "," parameter_declaration |@flatten|
     ],
     parameter_declaration => [
-        declaration_specifiers_i declarator,
-        declaration_specifiers_i abstract_declarator,
-        declaration_specifiers_i
+        declaration_specifiers_p declarator,
+        declaration_specifiers_p abstract_declarator,
+        declaration_specifiers_p
+    ],
+    declaration_specifiers_p => [
+        declaration_specifiers
     ],
     identifier_list => [
         IDENTIFIER,

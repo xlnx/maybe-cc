@@ -115,7 +115,9 @@ JumpTable<NodeHandler> handlers = {
 		 }
 		 else
 		 {
-			 UNIMPLEMENTED( "initializer" );
+			 TODO( "initializer not implemented" );
+			 return codegen( children[ 0 ] );
+			 //  UNIMPLEMENTED( "initializer" );
 		 }
 	 } }
 };

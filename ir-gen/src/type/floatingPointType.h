@@ -6,12 +6,15 @@ namespace mty
 {
 struct FloatingPoint : Arithmetic
 {
+	static constexpr auto type = TypeName::FloatingPointType;
+
 	unsigned bits;
 
 	FloatingPoint( unsigned bits, bool is_const = false, bool is_volatile = false ) :
 	  Arithmetic( get_float_type( bits ), is_const, is_volatile ),
 	  bits( bits )
 	{
+		type_name = type;
 	}
 
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
@@ -27,6 +30,7 @@ struct FloatingPoint : Arithmetic
 		}
 		if ( st.size() != ++id )
 		{
+			os << " ";
 			st[ id ]->print( os, st, id );
 		}
 	}
@@ -34,6 +38,13 @@ struct FloatingPoint : Arithmetic
 	std::shared_ptr<Qualified> clone() const override
 	{
 		return std::make_shared<FloatingPoint>( *this );
+	}
+
+protected:
+	bool impl_is_same_without_cv( const Qualified &other ) const override
+	{
+		auto &ref = dynamic_cast<const FloatingPoint &>( other );
+		return ref.bits == bits;
 	}
 
 private:
