@@ -36,7 +36,7 @@ std::map<std::string, std::function<Value *( Value *, Value * )>> binaryOps = {
 JumpTable<NodeHandler> handlers = {
 	{ "function_definition", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
 		  Json::Value &children = node[ "children" ];
-		  symTable.push();
+
 		  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
 
 		  if ( declspec.has_attribute( SC_TYPEDEF ) )
@@ -58,13 +58,13 @@ JumpTable<NodeHandler> handlers = {
 
 		  //  dbg( "in function_definition: ", decl );
 
-		  if ( !type->isFunctionTy() )
+		  if ( !type.is<mty::Function>() )
 		  {
 			  infoList->add_msg( MSG_TYPE_ERROR, "expected a function defination", children[ 0 ] );
 			  HALT();
 		  }
 
-		  auto fn_type = type.template as<FunctionType>();
+		  auto fn_type = type.as<FunctionType>();
 
 		  auto fn = TheModule->getFunction( name );
 
@@ -76,21 +76,14 @@ JumpTable<NodeHandler> handlers = {
 			  }
 		  }
 
+		  symTable.insert( name, QualifiedValue( std::make_shared<QualifiedType>( type ), fn, false ) );
+
 		  currentFunction = fn;
 		  BasicBlock *BB = BasicBlock::Create( TheContext, "entry", fn );
 		  currentBB = BB;
 		  Builder.SetInsertPoint( BB );
 
-		  //   auto i32_ty = Type::getInt32Ty( TheContext );
-		  //   auto i32_ptr_ty = Type::getInt32PtrTy( TheContext );
-
-		  //   auto alloc = Builder.CreateAlloca( i32_ptr_ty, 0, "ptr" );
-
-		  //   auto cc = Constant::getIntegerValue( i32_ty, APInt( 32, 2 ) );
-
-		  //   auto ptr = Builder.CreateGEP( alloc, cc, "off" );
-
-		  //   Builder.CreateStore( cc, ptr );
+		  symTable.push();
 
 		  //To codegen block
 		  auto &basicBlock = children[ 2 ][ "children" ];

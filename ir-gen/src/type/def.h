@@ -1,7 +1,7 @@
 #pragma once
 
 #include "type.h"
-#include "builder.h"
+#include "type.h"
 
 #include "voidType.h"
 #include "integerType.h"

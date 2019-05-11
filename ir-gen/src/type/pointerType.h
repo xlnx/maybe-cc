@@ -11,10 +11,15 @@ struct Pointer : Derefable
 	{
 	}
 
-	void print( std::ostream &os ) const override
+	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
 	{
-		Derefable::print( os );
-		os << "Ptr: ";
+		os << " *";
+		if ( is_const ) os << "const ";
+		if ( is_volatile ) os << "volatile ";
+		if ( st.size() != ++id )
+		{
+			st[ id ]->print( os, st, id );
+		}
 	}
 
 	std::shared_ptr<Qualified> clone() const override

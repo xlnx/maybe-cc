@@ -14,10 +14,15 @@ struct Array : Address
 	{
 	}
 
-	void print( std::ostream &os ) const override
+	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
 	{
-		Address::print( os );
-		os << "[" << len << "]: ";
+		if ( st.size() != ++id )
+		{
+			if ( st[ id ]->is<mty::Pointer>() ) os << "(";
+			st[ id ]->print( os, st, id );
+			if ( st[ id ]->is<mty::Pointer>() ) os << ")";
+		}
+		os << "[" << len << "]";
 	}
 
 	std::shared_ptr<Qualified> clone() const override

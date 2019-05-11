@@ -25,12 +25,6 @@ struct Qualified
 
 	virtual ~Qualified() = default;
 
-	virtual void print( std::ostream &os ) const
-	{
-		if ( is_const ) os << "c";
-		if ( is_volatile ) os << "v";
-	}
-
 	template <typename T>
 	bool is() const
 	{
@@ -44,6 +38,7 @@ struct Qualified
 	}
 
 	virtual std::shared_ptr<Qualified> clone() const = 0;
+	virtual void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const = 0;
 };
 
 class Derefable : public Qualified

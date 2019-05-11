@@ -3,72 +3,239 @@
 static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 {
 	auto &children = node[ "children" ];
-	auto lhs = children[ 0 ][ "type" ].asCString()[ 0 ] == '_' ? get<QualifiedValue>( codegen( children[ 0 ], _ ) )
-															   : handle_binary_expr( children[ 0 ], _ );
-	auto rhs = children[ 2 ][ "type" ].asCString()[ 0 ] == '_' ? get<QualifiedValue>( codegen( children[ 2 ], _ ) )
-															   : handle_binary_expr( children[ 2 ], _ );
+	auto lhs = ( children[ 0 ][ "type" ].asCString()[ 0 ] == '_' ? get<QualifiedValue>( codegen( children[ 0 ], _ ) )
+																 : handle_binary_expr( children[ 0 ], _ ) )
+				 .value( children[ 0 ] );
+	auto rhs = ( children[ 2 ][ "type" ].asCString()[ 0 ] == '_' ? get<QualifiedValue>( codegen( children[ 2 ], _ ) )
+																 : handle_binary_expr( children[ 2 ], _ ) )
+				 .value( children[ 2 ] );
 	auto op = children[ 1 ][ 1 ].asCString();
 
 	static JumpTable<QualifiedValue( QualifiedValue & lhs, QualifiedValue & rhs, Json::Value & ast )> __ = {
 		{ "*", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-			 lhs.cast_binary_expr( rhs, ast );
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( type->is<mty::Integer>() )
+			 {
+				 return QualifiedValue( type, Builder.CreateMul( lhs.get(), rhs.get() ) );
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFMul( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 		{ "/", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 if ( itype->is_signed )
+				 {
+					 return QualifiedValue( type, Builder.CreateSDiv( lhs.get(), rhs.get() ) );
+				 }
+				 else
+				 {
+					 return QualifiedValue( type, Builder.CreateUDiv( lhs.get(), rhs.get() ) );
+				 }
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFDiv( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 		{ "%", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 if ( itype->is_signed )
+				 {
+					 return QualifiedValue( type, Builder.CreateSRem( lhs.get(), rhs.get() ) );
+				 }
+				 else
+				 {
+					 return QualifiedValue( type, Builder.CreateURem( lhs.get(), rhs.get() ) );
+				 }
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFRem( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 
 		{ "+", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 TODO( "pointer arithmetic not implemented" );
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 return QualifiedValue( type, Builder.CreateAdd( lhs.get(), rhs.get() ) );
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFAdd( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 		{ "-", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 TODO( "pointer arithmetic not implemented" );
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 return QualifiedValue( type, Builder.CreateSub( lhs.get(), rhs.get() ) );
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFSub( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 
 		{ "<<", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 TODO( "fuck shift" );
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 return QualifiedValue( type, Builder.CreateShl( lhs.get(), rhs.get() ) );
+			 }
+			 else
+			 {
+				 infoList->add_msg( MSG_TYPE_ERROR, fmt( "invalid operands to binary expression (`", "` and `", "`)" ), ast );
+				 HALT();
+			 }
 		 } },
 		{ ">>", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 UNIMPLEMENTED();
 		 } },
 
 		{ "<", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 if ( itype->is_signed )
+				 {
+					 return QualifiedValue( type, Builder.CreateICmpSLT( lhs.get(), rhs.get() ) );
+				 }
+				 else
+				 {
+					 return QualifiedValue( type, Builder.CreateICmpULT( lhs.get(), rhs.get() ) );
+				 }
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFCmpOLT( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 		{ ">", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 if ( itype->is_signed )
+				 {
+					 return QualifiedValue( type, Builder.CreateICmpSGT( lhs.get(), rhs.get() ) );
+				 }
+				 else
+				 {
+					 return QualifiedValue( type, Builder.CreateICmpUGT( lhs.get(), rhs.get() ) );
+				 }
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFCmpOGT( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 		{ "<=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 if ( itype->is_signed )
+				 {
+					 return QualifiedValue( type, Builder.CreateICmpSLE( lhs.get(), rhs.get() ) );
+				 }
+				 else
+				 {
+					 return QualifiedValue( type, Builder.CreateICmpULE( lhs.get(), rhs.get() ) );
+				 }
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFCmpOLE( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 		{ ">=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 if ( itype->is_signed )
+				 {
+					 return QualifiedValue( type, Builder.CreateICmpSGE( lhs.get(), rhs.get() ) );
+				 }
+				 else
+				 {
+					 return QualifiedValue( type, Builder.CreateICmpUGE( lhs.get(), rhs.get() ) );
+				 }
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFCmpOGE( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 
 		{ "==", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 return QualifiedValue( type, Builder.CreateICmpEQ( lhs.get(), rhs.get() ) );
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFCmpOEQ( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 		{ "!=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 return QualifiedValue( type, Builder.CreateICmpNE( lhs.get(), rhs.get() ) );
+			 }
+			 else
+			 {
+				 return QualifiedValue( type, Builder.CreateFCmpONE( lhs.get(), rhs.get() ) );
+			 }
 		 } },
 
 		{ "&", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 UNIMPLEMENTED();
 		 } },
 		{ "^", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 UNIMPLEMENTED();
 		 } },
 		{ "|", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 UNIMPLEMENTED();
+			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+			 auto &type = lhs.get_type();
+			 if ( auto itype = type->as<mty::Integer>() )
+			 {
+				 return QualifiedValue( type, Builder.CreateShl( lhs.get(), rhs.get() ) );
+			 }
+			 else
+			 {
+				 infoList->add_msg( MSG_TYPE_ERROR, fmt( "invalid operands to binary expression (`", "` and `", "`)" ), ast );
+				 HALT();
+			 }
 		 } },
 
 		{ "&&", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 UNIMPLEMENTED();
 		 } },
 		{ "||", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-
+			 UNIMPLEMENTED();
 		 } }
 	};
 
@@ -197,7 +364,9 @@ int Expression::reg()
 			  }
 		  } ) },
 
-		{ "binary_expression", pack_fn<VoidType, QualifiedValue>( handle_binary_expr ) },
+		{ "binary_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const &_ ) -> QualifiedValue {
+			  return handle_binary_expr( node[ "children" ][ 0 ], _ );
+		  } ) },
 		{ "_binary_expression", []( Json::Value &node, const ArgsType &arg ) -> AstType {
 			 return codegen( node[ "children" ][ 0 ], arg );
 		 } }

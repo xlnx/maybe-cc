@@ -10,6 +10,8 @@ class QualifiedType
 	friend class QualifiedTypeBuilder;
 	friend class TypeView;
 
+	friend std::ostream &operator<<( std::ostream &os, const TypeView &view );
+
 private:
 	std::vector<std::shared_ptr<mty::Qualified>> list;
 
@@ -52,8 +54,6 @@ public:
 	{
 		return dynamic_cast<const T *>( this->list.back().get() );
 	}
-
-	TypeView view() const;
 
 	friend std::ostream &operator<<( std::ostream &os, const QualifiedType &type );
 };
@@ -104,19 +104,105 @@ public:
 	static TypeView const &getFloatTy();
 	static TypeView const &getDoubleTy();
 	static TypeView const &getLongDoubleTy();
+
+	// static TypeView from( const std::shared_ptr<mty::Qualified> &direct )
+	// {
+	// 	return TypeView( std::make_shared<QualifiedType>( direct ), 0 );
+	// }
 };
+
+struct QualifiedDecl
+{
+	QualifiedType type;
+	Option<std::string> name;
+
+public:
+	QualifiedDecl( const QualifiedType &type, const std::string &name ) :
+	  type( type ),
+	  name( name )
+	{
+	}
+	QualifiedDecl( const QualifiedType &type ) :
+	  type( type )
+	{
+	}
+
+	friend std::ostream &operator<<( std::ostream &os, const QualifiedDecl &decl );
+};
+
+struct QualifiedType;
+
+namespace mty
+{
+struct Array;
+}
+
+class QualifiedTypeBuilder
+{
+private:
+	std::vector<std::shared_ptr<mty::Qualified>> list;
+
+public:
+	QualifiedTypeBuilder() = default;
+	QualifiedTypeBuilder( const std::shared_ptr<mty::Qualified> &type ) :
+	  list{ type }
+	{
+	}
+	QualifiedTypeBuilder( const QualifiedType &type, bool is_const = false, bool is_volatile = false ) :
+	  list{ type.list }
+	{
+		auto idx = list.size() - 1;
+		while ( list[ idx ]->is<mty::Array>() )
+		{
+			idx -= 1;
+		}
+		for ( auto i = idx; i != list.size(); ++i )
+		{  // if typedef const/volatile array
+			auto item = list[ i ]->clone();
+			if ( i == idx )
+			{
+				item->is_const = item->is_const || is_const;
+				item->is_volatile = item->is_volatile || is_volatile;
+			}
+			list[ i ] = std::move( item );
+		}
+	}
+
+	QualifiedTypeBuilder &add_level( const std::shared_ptr<mty::Qualified> &obj )
+	{
+		list.emplace_back( obj );
+		return *this;
+	}
+	Type *get_type() const
+	{
+		return list.back()->type;
+	}
+	QualifiedType build()
+	{
+		QualifiedType type;
+		type.list = std::move( list );
+		return type;
+	}
+};
+
+inline std::ostream &operator<<( std::ostream &os, const QualifiedDecl &decl )
+{
+	os << decl.name << " = " << decl.type;
+	return os;
+}
 
 inline std::ostream &operator<<( std::ostream &os, const QualifiedType &type )
 {
-	for ( int i = type.list.size() - 1; i >= 0; --i )
-	{
-		type.list[ i ]->print( os );
-	}
+	type.list.front()->print( os, type.list, 0 );
 	return os;
 }
 
 inline std::ostream &operator<<( std::ostream &os, const TypeView &view )
 {
-	view->print( os );
-	return os;
+	auto tb = QualifiedTypeBuilder();
+	for ( int i = 0; i <= view.index; ++i )
+	{
+		tb.add_level( view.type->list[ i ] );
+	}
+	return os << tb.build();
 }

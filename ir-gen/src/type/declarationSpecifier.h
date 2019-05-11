@@ -1,6 +1,6 @@
 #pragma once
 
-#include "builder.h"
+#include "type.h"
 
 #define SC_TYPEDEF 0x10
 #define SC_EXTERN 0x20

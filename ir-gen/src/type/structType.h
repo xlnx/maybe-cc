@@ -1,7 +1,7 @@
 #pragma once
 
 #include "predef.h"
-#include "builder.h"
+#include "type.h"
 
 namespace mty
 {
@@ -25,15 +25,15 @@ struct Struct : Qualified
 		}
 	}
 
-	void print( std::ostream &os ) const override
+	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
 	{
-		Qualified::print( os );
-		os << "Struct {";
-		for ( auto comp : this->comps )
+		if ( is_const ) os << "const ";
+		if ( is_volatile ) os << "volatile ";
+		os << "struct";
+		if ( st.size() != ++id )
 		{
-			os << comp.first << ": " << comp.second << ", ";
+			st[ id ]->print( os, st, id );
 		}
-		os << "}";
 	}
 
 	std::shared_ptr<Qualified> clone() const override

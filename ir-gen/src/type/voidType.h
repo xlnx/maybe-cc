@@ -11,10 +11,15 @@ struct Void : Qualified
 	{
 	}
 
-	void print( std::ostream &os ) const override
+	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
 	{
-		Qualified::print( os );
-		os << "Void";
+		if ( is_const ) os << "const ";
+		if ( is_volatile ) os << "volatile ";
+		os << "void";
+		if ( st.size() != ++id )
+		{
+			st[ id ]->print( os, st, id );
+		}
 	}
 
 	std::shared_ptr<Qualified> clone() const override

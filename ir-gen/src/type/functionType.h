@@ -1,7 +1,7 @@
 #pragma once
 
 #include "predef.h"
-#include "builder.h"
+#include "type.h"
 
 namespace mty
 {
@@ -15,15 +15,20 @@ struct Function : Address
 	{
 	}
 
-	void print( std::ostream &os ) const override
+	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
 	{
-		Address::print( os );
-		os << "Fn (";
-		for ( auto arg : this->args )
+		if ( st.size() != ++id )
 		{
-			os << arg << ", ";
+			if ( st[ id ]->is<mty::Pointer>() ) os << "(";
+			st[ id ]->print( os, st, id );
+			if ( st[ id ]->is<mty::Pointer>() ) os << ")";
 		}
-		os << "): ";
+		os << "(";
+		for ( auto &arg : args )
+		{
+			os << arg.type << ", ";
+		}
+		os << ")";
 	}
 
 	std::shared_ptr<Qualified> clone() const override
