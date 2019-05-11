@@ -165,11 +165,14 @@ lang! {
         unary_expression |@flatten|,
         "(" type_name ")" cast_expression
     ],
+    element_binary_expression => [
+        cast_expression
+    ],
     multiplicative_expression => [
-        cast_expression |@flatten|,
-        multiplicative_expression "*" cast_expression,
-        multiplicative_expression "/" cast_expression,
-        multiplicative_expression "%" cast_expression
+        element_binary_expression |@flatten|,
+        multiplicative_expression "*" element_binary_expression,
+        multiplicative_expression "/" element_binary_expression,
+        multiplicative_expression "%" element_binary_expression
     ],
     additive_expression => [
         multiplicative_expression |@flatten|,
@@ -213,9 +216,12 @@ lang! {
         logical_and_expression |@flatten|,
         logical_or_expression "||" logical_and_expression
     ],
+    binary_expression => [
+        logical_or_expression
+    ],
     conditional_expression => [
-        logical_or_expression |@flatten|,
-        logical_or_expression "?" expression ":" conditional_expression
+        binary_expression |@flatten|,
+        binary_expression "?" expression ":" conditional_expression
     ],
     assignment_expression => [
         conditional_expression |@flatten|,

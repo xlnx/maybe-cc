@@ -82,8 +82,8 @@ int Declaration::reg()
 
 							  if ( children.size() > 1 )  // decl with init
 							  {
-								  auto init = get<Value *>( codegen( children[ 2 ], &builder ) );
-								  Builder.CreateStore( alloc, init );
+								  auto init = get<QualifiedValue>( codegen( children[ 2 ], &builder ) );
+								  Builder.CreateStore( alloc, init.value( children[ 2 ] ).get() );
 							  }
 							  else
 							  {

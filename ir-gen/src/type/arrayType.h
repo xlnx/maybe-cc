@@ -31,13 +31,17 @@ public:
 	Value *deref( TypeView &view, Value *val, Json::Value &ast ) const override
 	{
 		view.next();
-		return Builder.CreateConstGEP1_32( val, 0 );
+		return Builder.CreateConstGEP2_64( val, 0, 0 );
 	}
 
 	Value *offset( TypeView &view, Value *val, Value *off, Json::Value &ast ) const override
 	{
+		static const auto zero = ConstantInt::get( TheContext, APInt( 64, 0, true ) );
+		static Value *indices[ 2 ] = { zero, nullptr };
+
 		view.next();
-		return Builder.CreateInBoundsGEP( val, off );
+		indices[ 1 ] = off;
+		return Builder.CreateInBoundsGEP( val, indices );
 	}
 };
 

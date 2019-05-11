@@ -127,4 +127,7 @@ struct str_cmp_op
 }  // namespace __impl
 
 template <typename T>
-using JumpTable = std::map<const char *, T, __impl::str_cmp_op>;
+using JumpTable = std::map<const char *, std::function<T>, __impl::str_cmp_op>;
+
+template <typename T>
+using LookupTable = std::map<const char *, T, __impl::str_cmp_op>;

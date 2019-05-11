@@ -96,14 +96,14 @@ public:
 	friend std::ostream &operator<<( std::ostream &os, const TypeView &view );
 
 public:
-	static TypeView &getCharTy( bool is_signed );
-	static TypeView &getShortTy( bool is_signed );
-	static TypeView &getIntTy( bool is_signed );
-	static TypeView &getLongTy( bool is_signed );
-	static TypeView &getLongLongTy( bool is_signed );
-	static TypeView &getFloatTy();
-	static TypeView &getDoubleTy();
-	static TypeView &getLongDoubleTy();
+	static TypeView const &getCharTy( bool is_signed );
+	static TypeView const &getShortTy( bool is_signed );
+	static TypeView const &getIntTy( bool is_signed );
+	static TypeView const &getLongTy( bool is_signed );
+	static TypeView const &getLongLongTy( bool is_signed );
+	static TypeView const &getFloatTy();
+	static TypeView const &getDoubleTy();
+	static TypeView const &getLongDoubleTy();
 };
 
 inline std::ostream &operator<<( std::ostream &os, const QualifiedType &type )

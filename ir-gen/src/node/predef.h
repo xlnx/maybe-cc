@@ -40,7 +40,7 @@ std::function<AstType( Json::Value &, const ArgsType & )>
 	};
 }
 
-using NodeHandler = std::function<AstType( Json::Value &, ArgsType const & )>;
+using NodeHandler = AstType( Json::Value &, ArgsType const & );
 
 extern AstType codegen( Json::Value &node, const ArgsType &arg = VoidType() );
 

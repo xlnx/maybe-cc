@@ -39,7 +39,7 @@ private:
 private:
 	int get_attr_from( const char *name ) const
 	{
-		static JumpTable<unsigned> attr_map = {
+		static LookupTable<unsigned> attr_map = {
 			{ "typedef", SC_TYPEDEF },
 			{ "extern", SC_EXTERN },
 			{ "static", SC_STATIC },
@@ -74,7 +74,7 @@ private:
 public:
 	DeclarationSpecifiers() = default;
 
-	void add_type( const QualifiedType &type, Json::Value const &ast )
+	DeclarationSpecifiers &add_type( const QualifiedType &type, Json::Value const &ast )
 	{
 		if ( ( this->attrs & TYPE_MODIFIER ) != 0 )
 		{
@@ -90,9 +90,10 @@ public:
 			infoList->add_msg( MSG_TYPE_ERROR, "multiple type specifiers", ast );
 			HALT();
 		}
+		return *this;
 	}
 
-	void add_attribute( const char *name, Json::Value const &ast )
+	DeclarationSpecifiers &add_attribute( const char *name, Json::Value const &ast )
 	{
 		auto attr = get_attr_from( name );
 		if ( ( attr & STORAGE_SPECIFIER ) && ( this->attrs & STORAGE_SPECIFIER ) )
@@ -138,6 +139,7 @@ public:
 			infoList->add_msg( MSG_TYPE_ERROR, "`signed unsigned` is invalid", ast );
 			HALT();
 		}
+		return *this;
 	}
 
 	bool has_attribute( const char *name ) const

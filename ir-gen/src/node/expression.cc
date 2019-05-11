@@ -1,5 +1,87 @@
 #include "expression.h"
 
+static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
+{
+	auto &children = node[ "children" ];
+	auto lhs = children[ 0 ][ "type" ].asCString()[ 0 ] != 'b' ? get<QualifiedValue>( codegen( children[ 0 ], _ ) )
+															   : handle_binary_expr( children[ 0 ], _ );
+	auto rhs = children[ 2 ][ "type" ].asCString()[ 0 ] != 'b' ? get<QualifiedValue>( codegen( children[ 2 ], _ ) )
+															   : handle_binary_expr( children[ 2 ], _ );
+	auto op = children[ 1 ][ 1 ].asCString();
+
+	static JumpTable<QualifiedValue( QualifiedValue & lhs, QualifiedValue & rhs, Json::Value & ast )> __ = {
+		{ "*", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+			 // return  lhs.value()
+		 } },
+		{ "/", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ "%", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+
+		{ "+", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ "-", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+
+		{ "<<", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ ">>", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+
+		{ "<", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ ">", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ "<=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ ">=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+
+		{ "==", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ "!=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+
+		{ "&", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ "^", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ "|", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+
+		{ "&&", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } },
+		{ "||", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
+
+		 } }
+	};
+
+	if ( __.find( op ) != __.end() )
+	{
+		return __[ op ]( lhs, rhs, node );
+	}
+	else
+	{
+		UNIMPLEMENTED( op );
+	}
+}
+
 int Expression::reg()
 {
 	static decltype( handlers ) expr = {
@@ -17,7 +99,7 @@ int Expression::reg()
 				  auto key = children[ 0 ][ 1 ].asCString();
 				  auto val = get<QualifiedValue>( codegen( children[ 1 ] ) );
 
-				  static JumpTable<std::function<QualifiedValue()>> __ = {
+				  static JumpTable<QualifiedValue()> __ = {
 					  { "*", [&]() -> QualifiedValue {
 						   return val.value( children[ 1 ] ).deref( node );
 					   } }
@@ -44,7 +126,7 @@ int Expression::reg()
 			  auto key = children[ 1 ][ 1 ].asCString();
 			  auto val = get<QualifiedValue>( codegen( children[ 0 ] ) );
 
-			  static JumpTable<std::function<QualifiedValue( Json::Value & children, QualifiedValue & val, Json::Value & )>> __ = {
+			  static JumpTable<QualifiedValue( Json::Value & children, QualifiedValue & val, Json::Value & )> __ = {
 				  { "[", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 					   auto off = get<QualifiedValue>( codegen( children[ 2 ] ) );
 					   return val.value( children[ 0 ] ).offset( off.value( children[ 2 ] ).get(), node );
@@ -72,7 +154,7 @@ int Expression::reg()
 				  auto val = child[ 1 ].asCString();
 				  auto type = child[ 0 ].asCString();
 
-				  static JumpTable<std::function<QualifiedValue( const char *, Json::Value & )>> __ = {
+				  static JumpTable<QualifiedValue( const char *, Json::Value & )> __ = {
 					  { "IDENTIFIER", []( const char *val, Json::Value &node ) -> QualifiedValue {
 						   if ( auto sym = symTable.find( val ) )
 						   {
@@ -92,11 +174,14 @@ int Expression::reg()
 						   }
 					   } },
 					  { "INTEGER", []( const char *val, Json::Value &node ) -> QualifiedValue {
-						   auto val = std::atoi( val );
+						   auto num = std::atoi( val );
 						   TODO( "Literal type not implemented" );
 						   TODO( "Literal Hex not implemented" );
 						   TODO( "Immediate Type" );
-						   return QualifiedValue(, Constant::getIntegerValue( Type::getInt32Ty( TheContext ), APInt( 32, val, true ) ) );
+						   return QualifiedValue( TypeView::getIntTy( true ),
+												  Constant::getIntegerValue(
+													Type::getInt32Ty( TheContext ),
+													APInt( 32, num, true ) ) );
 					   } }
 				  };
 
@@ -110,7 +195,9 @@ int Expression::reg()
 					  //   INTERNAL_ERROR();
 				  }
 			  }
-		  } ) }
+		  } ) },
+
+		{ "binary_expression", pack_fn<VoidType, QualifiedValue>( handle_binary_expr ) }
 	};
 
 	handlers.insert( expr.begin(), expr.end() );
