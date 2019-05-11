@@ -106,6 +106,8 @@ std::string indent( int num )
 AstType codegen( Json::Value &node, const ArgsType &arg )
 {
 	auto type = node[ "type" ].asCString();
+	if ( type[ std::strlen( type ) - 1 ] == '_' )
+		type = "binary_expression";
 
 	static int ind = 0;
 
