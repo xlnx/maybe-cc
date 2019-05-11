@@ -94,7 +94,11 @@ int Declaration::reg()
 
 			  if ( child_cnt == 0 )
 			  {
-				  infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything", node );
+				  auto &type = declspec.get_type();
+				  if ( type.is_none() || !type.unwrap().is<mty::Struct>() )
+				  {
+					  infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything", node );
+				  }
 			  }
 
 			  return VoidType();

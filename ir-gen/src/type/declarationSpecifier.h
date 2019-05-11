@@ -57,7 +57,7 @@ private:
 
 			{ "short", TM_SHORT },
 			{ "long", TM_LONG },
-			{ "signed", TM_LONG },
+			{ "signed", TM_SIGNED },
 			{ "unsigned", TM_UNSIGNED },
 		};
 
@@ -152,10 +152,10 @@ public:
 		return ( this->attrs & attr ) != 0;
 	}
 
-	// Option<QualifiedType> const &get_type() const
-	// {
-	// 	return this->type;
-	// }
+	Option<QualifiedType> const &get_type() const
+	{
+		return this->type;
+	}
 
 	QualifiedTypeBuilder into_type_builder( Json::Value const &ast ) const
 	{
@@ -170,39 +170,45 @@ public:
 				int num_bits = 32;
 				bool is_signed = true;
 
-				if ( ( attrs & TYPE_SPECIFIER ) != 0 )
+				auto ty_spec = attrs & TYPE_SPECIFIER;
+
+				switch ( ty_spec )
 				{
-					auto ty_spec = attrs & TYPE_SPECIFIER;
+				case TS_DOUBLE:
+				{
+					if ( ( attrs & ( TYPE_MODIFIER & ~TM_LONG ) ) != 0 )
+					{
+						infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
+					}
+					base_type = TS_FLOAT;
+					num_bits = 64;
+					break;
+				}
+				case TS_VOID:
+				case TS_FLOAT:
+				{
+					if ( ( attrs & TYPE_MODIFIER ) != 0 )
+					{
+						infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
+					}
 					switch ( ty_spec )
 					{
-					case TS_DOUBLE:
+					case TS_VOID: base_type = TS_VOID; break;
+					case TS_FLOAT: base_type = TS_FLOAT; break;
+					default: INTERNAL_ERROR();
+					}
+					break;
+				}
+				case TS_CHAR:
+				{
+					if ( ( attrs & ( TYPE_MODIFIER & ~( TM_SIGNED | TM_UNSIGNED ) ) ) != 0 )
 					{
-						if ( ( attrs & ( TYPE_MODIFIER & ~TM_LONG ) ) != 0 )
-						{
-							infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
-						}
-						base_type = TS_FLOAT;
-						num_bits = 64;
-						break;
+						infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
 					}
-					case TS_VOID:
-					case TS_CHAR:
-					case TS_FLOAT:
-					{
-						if ( ( attrs & TYPE_MODIFIER ) != 0 )
-						{
-							infoList->add_msg( MSG_TYPE_ERROR, "invalid type specifier", ast );
-						}
-						switch ( ty_spec )
-						{
-						case TS_VOID: base_type = TS_VOID; break;
-						case TS_CHAR: num_bits = 8; break;
-						case TS_FLOAT: base_type = TS_FLOAT; break;
-						default: INTERNAL_ERROR();
-						}
-						break;
-					}
-					}
+					num_bits = 8;
+					if ( ( attrs & TM_UNSIGNED ) != 0 ) is_signed = false;
+					break;
+				}
 				}
 				if ( ( attrs & TYPE_MODIFIER ) != 0 )
 				{  // only modifier
