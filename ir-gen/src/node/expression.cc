@@ -266,15 +266,15 @@ int Expression::reg()
 				  auto key = children[ 0 ][ 1 ].asCString();
 				  auto val = get<QualifiedValue>( codegen( children[ 1 ] ) );
 
-				  static JumpTable<QualifiedValue()> __ = {
-					  { "*", [&]() -> QualifiedValue {
-						   return val.value( children[ 1 ] ).deref( node );
+				  static JumpTable<QualifiedValue( Json::Value & children, QualifiedValue & val, Json::Value & ast )> __ = {
+					  { "*", []( Json::Value &children, QualifiedValue &val, Json::Value &ast ) -> QualifiedValue {
+						   return val.value( children[ 1 ] ).deref( ast );
 					   } }
 				  };
 
 				  if ( __.find( key ) != __.end() )
 				  {
-					  return __[ key ]();
+					  return __[ key ]( children, val, node );
 				  }
 				  else
 				  {
