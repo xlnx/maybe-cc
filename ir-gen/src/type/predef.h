@@ -31,7 +31,17 @@ struct Qualified
 		if ( is_volatile ) os << "v";
 	}
 
-	virtual bool is_array_type() const { return false; }
+	template <typename T>
+	bool is() const
+	{
+		return dynamic_cast<const T *>( this ) != nullptr;
+	}
+
+	template <typename T>
+	const T *as() const
+	{
+		return dynamic_cast<const T *>( this );
+	}
 
 	virtual std::shared_ptr<Qualified> clone() const = 0;
 };
@@ -49,6 +59,12 @@ class Address : public Derefable
 {
 public:
 	using Derefable::Derefable;
+};
+
+class Arithmetic : public Qualified
+{
+public:
+	using Qualified::Qualified;
 };
 
 }  // namespace mty

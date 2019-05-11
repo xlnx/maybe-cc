@@ -3,15 +3,15 @@
 static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 {
 	auto &children = node[ "children" ];
-	auto lhs = children[ 0 ][ "type" ].asCString()[ 0 ] != 'b' ? get<QualifiedValue>( codegen( children[ 0 ], _ ) )
+	auto lhs = children[ 0 ][ "type" ].asCString()[ 0 ] == '_' ? get<QualifiedValue>( codegen( children[ 0 ], _ ) )
 															   : handle_binary_expr( children[ 0 ], _ );
-	auto rhs = children[ 2 ][ "type" ].asCString()[ 0 ] != 'b' ? get<QualifiedValue>( codegen( children[ 2 ], _ ) )
+	auto rhs = children[ 2 ][ "type" ].asCString()[ 0 ] == '_' ? get<QualifiedValue>( codegen( children[ 2 ], _ ) )
 															   : handle_binary_expr( children[ 2 ], _ );
 	auto op = children[ 1 ][ 1 ].asCString();
 
 	static JumpTable<QualifiedValue( QualifiedValue & lhs, QualifiedValue & rhs, Json::Value & ast )> __ = {
 		{ "*", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-			 // return  lhs.value()
+			 lhs.cast_binary_expr( rhs, ast );
 		 } },
 		{ "/", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 
@@ -197,7 +197,10 @@ int Expression::reg()
 			  }
 		  } ) },
 
-		{ "binary_expression", pack_fn<VoidType, QualifiedValue>( handle_binary_expr ) }
+		{ "binary_expression", pack_fn<VoidType, QualifiedValue>( handle_binary_expr ) },
+		{ "_binary_expression", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+			 return codegen( node[ "children" ][ 0 ], arg );
+		 } }
 	};
 
 	handlers.insert( expr.begin(), expr.end() );

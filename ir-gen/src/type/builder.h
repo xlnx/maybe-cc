@@ -24,6 +24,11 @@ public:
 
 struct QualifiedType;
 
+namespace mty
+{
+struct Array;
+}
+
 class QualifiedTypeBuilder
 {
 private:
@@ -39,7 +44,7 @@ public:
 	  list{ type.list }
 	{
 		auto idx = list.size() - 1;
-		while ( list[ idx ]->is_array_type() )
+		while ( list[ idx ]->is<mty::Array>() )
 		{
 			idx -= 1;
 		}

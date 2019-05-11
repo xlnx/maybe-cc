@@ -165,14 +165,14 @@ lang! {
         unary_expression |@flatten|,
         "(" type_name ")" cast_expression
     ],
-    element_binary_expression => [
+    _binary_expression => [
         cast_expression
     ],
     multiplicative_expression => [
-        element_binary_expression |@flatten|,
-        multiplicative_expression "*" element_binary_expression,
-        multiplicative_expression "/" element_binary_expression,
-        multiplicative_expression "%" element_binary_expression
+        _binary_expression |@flatten|,
+        multiplicative_expression "*" _binary_expression,
+        multiplicative_expression "/" _binary_expression,
+        multiplicative_expression "%" _binary_expression
     ],
     additive_expression => [
         multiplicative_expression |@flatten|,

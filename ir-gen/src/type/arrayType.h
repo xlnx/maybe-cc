@@ -20,8 +20,6 @@ struct Array : Address
 		os << "[" << len << "]: ";
 	}
 
-	bool is_array_type() const override { return true; }
-
 	std::shared_ptr<Qualified> clone() const override
 	{
 		return std::make_shared<Array>( *this );

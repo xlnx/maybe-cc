@@ -4,19 +4,19 @@
 
 namespace mty
 {
-struct FloatingPoint : Qualified
+struct FloatingPoint : Arithmetic
 {
 	unsigned bits;
 
 	FloatingPoint( unsigned bits, bool is_const = false, bool is_volatile = false ) :
-	  Qualified( Type::getFloatPtrTy( TheContext, bits ), is_const, is_volatile ),
+	  Arithmetic( Type::getFloatPtrTy( TheContext, bits ), is_const, is_volatile ),
 	  bits( bits )
 	{
 	}
 
 	void print( std::ostream &os ) const override
 	{
-		Qualified::print( os );
+		Arithmetic::print( os );
 		os << "f" << bits;
 	}
 
