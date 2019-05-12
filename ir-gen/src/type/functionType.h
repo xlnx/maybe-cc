@@ -7,7 +7,7 @@ namespace mty
 {
 struct Function : Address
 {
-	static constexpr auto type = TypeName::FunctionType;
+	static constexpr auto self_type = TypeName::FunctionType;
 
 	std::vector<QualifiedDecl> args;
 
@@ -15,7 +15,7 @@ struct Function : Address
 	  Address( FunctionType::get( result_type, map_type( args ), false ) ),
 	  args( args )
 	{
-		type_name = type;
+		type_name = self_type;
 	}
 
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
@@ -42,7 +42,7 @@ struct Function : Address
 protected:
 	bool impl_is_same_without_cv( const Qualified &other ) const override
 	{
-		auto &fn = dynamic_cast<const Function &>( other );
+		auto &fn = static_cast<const Function &>( other );
 		if ( this->args.size() != fn.args.size() ) return false;
 		for ( int i = 0; i != this->args.size(); ++i )
 		{

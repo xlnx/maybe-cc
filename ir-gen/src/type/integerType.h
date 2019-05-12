@@ -6,7 +6,7 @@ namespace mty
 {
 struct Integer : Arithmetic
 {
-	static constexpr auto type = TypeName::IntegerType;
+	static constexpr auto self_type = TypeName::IntegerType;
 
 	unsigned bits;
 	bool is_signed;
@@ -16,7 +16,7 @@ struct Integer : Arithmetic
 	  bits( bits ),
 	  is_signed( is_signed )
 	{
-		type_name = type;
+		type_name = self_type;
 	}
 
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
@@ -47,7 +47,7 @@ struct Integer : Arithmetic
 protected:
 	bool impl_is_same_without_cv( const Qualified &other ) const override
 	{
-		auto &ref = dynamic_cast<const Integer &>( other );
+		auto &ref = static_cast<const Integer &>( other );
 		return ref.bits == bits && ref.is_signed == is_signed;
 	}
 };

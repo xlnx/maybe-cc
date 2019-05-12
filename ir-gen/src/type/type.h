@@ -118,14 +118,23 @@ public:
 	}
 
 	template <typename T>
-	T *as() const
+	T *as()
 	{
-		return static_cast<T *>( (Type *)*this );
+		static_assert( std::is_base_of<mty::Qualified, T>::value );
+		return dynamic_cast<T *>( this->list.back().get() );
+	}
+
+	template <typename T>
+	const T *as() const
+	{
+		static_assert( std::is_base_of<mty::Qualified, T>::value );
+		return dynamic_cast<const T *>( this->list.back().get() );
 	}
 
 	template <typename T>
 	bool is() const
 	{
+		static_assert( std::is_base_of<mty::Qualified, T>::value );
 		return dynamic_cast<const T *>( this->list.back().get() );
 	}
 
@@ -251,6 +260,7 @@ public:
 	QualifiedTypeBuilder( const QualifiedType &type, bool is_const = false, bool is_volatile = false ) :
 	  list{ type.list }
 	{
+		TODO( "handle opaque type" );
 		auto idx = list.size() - 1;
 		while ( list[ idx ]->is<mty::Array>() )
 		{

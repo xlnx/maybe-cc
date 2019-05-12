@@ -119,6 +119,11 @@ int Declaration::reg()
 			  {
 				  if ( children.size() < 3 )
 				  {
+					  auto name = children[ 1 ][ 1 ].asString();
+					  //   if (symTable)
+					  //   auto struct_ty = QualifiedType(
+
+					  //   )
 					  UNIMPLEMENTED( "pre declaration" );
 				  }
 				  else
@@ -127,12 +132,16 @@ int Declaration::reg()
 					  auto la = children[ 1 ][ 0 ].asString();
 					  auto has_id = la == "IDENTIFIER";
 					  auto struct_ty = get<QualifiedType>( codegen( children[ has_id ? 3 : 2 ] ) );
+
 					  if ( has_id )
 					  {  // struct A without typedefs is named "struct.A"
-						  auto name = "struct." + children[ 1 ][ 1 ].asString();
-						  struct_ty.as<StructType>()->setName( name );
+						  auto name = children[ 1 ][ 1 ].asString();
+						  auto fullName = "struct." + name;
 
-						  symTable.insert( name, struct_ty );
+						  static_cast<StructType *>( struct_ty.as<mty::Struct>()->type )->setName( fullName );
+						  struct_ty.as<mty::Struct>()->setName( name );
+
+						  symTable.insert( fullName, struct_ty );
 					  }
 					  return struct_ty;
 				  }

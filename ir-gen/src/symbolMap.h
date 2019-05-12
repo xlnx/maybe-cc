@@ -96,10 +96,11 @@ public:
 	{
 		int level = symTable.getLevel();
 		auto &symMap = symTable.symbolStack.back();
+		decl_indent = "  ";
 		os << "{\n";
 		for ( auto iter = symMap.begin(); iter != symMap.end(); iter++ )
 		{
-			os << "  " << iter->first;
+			os << decl_indent << iter->first;
 			if ( iter->second.is_value() )
 			{
 				os << " : " << iter->second.as_value().get_type();
@@ -111,6 +112,7 @@ public:
 			os << "\n";
 		}
 		os << "}\n";
+		decl_indent = "";
 		return os;
 	}
 

@@ -6,7 +6,7 @@ namespace mty
 {
 struct Array : Address
 {
-	static constexpr auto type = TypeName::ArrayType;
+	static constexpr auto self_type = TypeName::ArrayType;
 
 	std::size_t len;
 
@@ -14,7 +14,7 @@ struct Array : Address
 	  Address( ArrayType::get( element_type, len ) ),
 	  len( len )
 	{
-		type_name = type;
+		type_name = self_type;
 	}
 
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
@@ -36,7 +36,7 @@ struct Array : Address
 protected:
 	bool impl_is_same_without_cv( const Qualified &other ) const override
 	{
-		auto &ref = dynamic_cast<const Array &>( other );
+		auto &ref = static_cast<const Array &>( other );
 		return ref.len == len;
 	}
 

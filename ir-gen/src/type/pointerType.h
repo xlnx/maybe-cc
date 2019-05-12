@@ -6,12 +6,12 @@ namespace mty
 {
 struct Pointer : Derefable
 {
-	static constexpr auto type = TypeName::PointerType;
+	static constexpr auto self_type = TypeName::PointerType;
 
 	Pointer( Type *base_type, bool is_const = false, bool is_volatile = false ) :
 	  Derefable( PointerType::getUnqual( base_type ), is_const, is_volatile )
 	{
-		type_name = type;
+		type_name = self_type;
 	}
 
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override

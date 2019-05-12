@@ -6,7 +6,7 @@ namespace mty
 {
 struct FloatingPoint : Arithmetic
 {
-	static constexpr auto type = TypeName::FloatingPointType;
+	static constexpr auto self_type = TypeName::FloatingPointType;
 
 	unsigned bits;
 
@@ -14,7 +14,7 @@ struct FloatingPoint : Arithmetic
 	  Arithmetic( get_float_type( bits ), is_const, is_volatile ),
 	  bits( bits )
 	{
-		type_name = type;
+		type_name = self_type;
 	}
 
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
@@ -43,7 +43,7 @@ struct FloatingPoint : Arithmetic
 protected:
 	bool impl_is_same_without_cv( const Qualified &other ) const override
 	{
-		auto &ref = dynamic_cast<const FloatingPoint &>( other );
+		auto &ref = static_cast<const FloatingPoint &>( other );
 		return ref.bits == bits;
 	}
 

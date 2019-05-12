@@ -6,12 +6,12 @@ namespace mty
 {
 struct Void : Qualified
 {
-	static constexpr auto type = TypeName::VoidType;
+	static constexpr auto self_type = TypeName::VoidType;
 
 	Void( bool is_const = false, bool is_volatile = false ) :
 	  Qualified( Type::getVoidTy( TheContext ), is_const, is_volatile )
 	{
-		type_name = type;
+		type_name = self_type;
 	}
 
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override

@@ -64,13 +64,15 @@ JumpTable<NodeHandler> handlers = {
 			  HALT();
 		  }
 
-		  auto fn_type = type.as<FunctionType>();
+		  auto fn_type = type.as<mty::Function>();
 
 		  auto fn = TheModule->getFunction( name );
 
 		  if ( !fn )
 		  {
-			  if ( !( fn = Function::Create( fn_type, Function::ExternalLinkage, name, TheModule.get() ) ) )
+			  if ( !( fn = Function::Create(
+						static_cast<FunctionType *>( fn_type->type ),
+						Function::ExternalLinkage, name, TheModule.get() ) ) )
 			  {
 				  INTERNAL_ERROR();
 			  }
@@ -96,6 +98,7 @@ JumpTable<NodeHandler> handlers = {
 
 		  dbg( symTable );
 		  symTable.pop();
+
 		  return VoidType{};
 	  } ) },
 
@@ -175,10 +178,24 @@ char *gen_llvm_ir_cxx( const char *ast_json, MsgList &list )
 
 	if ( !reader.parse( ast_json, root ) ) return nullptr;
 
-	for ( auto i = 0; i < root.size(); ++i )
+	symTable.push();
+
+	try
 	{
-		codegen( root[ i ] );
+		for ( auto i = 0; i < root.size(); ++i )
+		{
+			codegen( root[ i ] );
+		}
 	}
+	catch ( std::exception &_ )
+	{
+		dbg( symTable );
+		symTable.pop();
+		throw;
+	}
+
+	dbg( symTable );
+	symTable.pop();
 
 	std::string cxx_ir;
 	raw_string_ostream str_stream( cxx_ir );

@@ -5,6 +5,7 @@
 extern LLVMContext TheContext;
 extern MsgList *infoList;
 extern IRBuilder<> Builder;
+extern std::string decl_indent;
 
 struct TypeView;
 
@@ -40,12 +41,14 @@ struct Qualified
 	template <typename T>
 	bool is() const
 	{
+		static_assert( std::is_base_of<mty::Qualified, T>::value );
 		return dynamic_cast<const T *>( this ) != nullptr;
 	}
 
 	template <typename T>
 	const T *as() const
 	{
+		static_assert( std::is_base_of<mty::Qualified, T>::value );
 		return dynamic_cast<const T *>( this );
 	}
 
