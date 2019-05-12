@@ -40,11 +40,15 @@ int Declaration::reg()
 
 			  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
 
+			  int child_cnt = 0;
+
 			  for ( int i = 1; i < children.size(); ++i )
 			  {
 				  auto &child = children[ i ];
 				  if ( child.isObject() )
 				  {
+					  child_cnt++;
+
 					  auto builder = declspec.into_type_builder( children[ 0 ] );
 					  auto &child = children[ i ];
 
@@ -54,8 +58,6 @@ int Declaration::reg()
 						  auto decl = get<QualifiedDecl>( codegen( children[ 0 ], &builder ) );
 						  auto type = decl.type;
 						  auto name = decl.name.unwrap();
-
-						  dbg( "declaration: ", decl );
 
 						  if ( declspec.has_attribute( SC_TYPEDEF ) )  // deal with typedef
 						  {
@@ -85,12 +87,17 @@ int Declaration::reg()
 								  auto init = get<QualifiedValue>( codegen( children[ 2 ], &builder ) );
 								  Builder.CreateStore( alloc, init.value( children[ 2 ] ).get() );
 							  }
-							  else
-							  {
-								  TODO( "deal with empty initializer list" );
-							  }
 						  }
 					  }
+				  }
+			  }
+
+			  if ( child_cnt == 0 )
+			  {
+				  auto &type = declspec.get_type();
+				  if ( type.is_none() || !type.unwrap().is<mty::Struct>() )
+				  {
+					  infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything", node );
 				  }
 			  }
 
@@ -98,6 +105,9 @@ int Declaration::reg()
 		  } ) },
 		/* VERIFIED -> DeclarationSpecifiers */
 		{ "declaration_specifiers_i", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
+			  return handle_decl( node );
+		  } ) },
+		{ "declaration_specifiers_p", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
 			  return handle_decl( node );
 		  } ) },
 		/* UNIMPLEMENTED -> QualifiedType */
@@ -109,6 +119,11 @@ int Declaration::reg()
 			  {
 				  if ( children.size() < 3 )
 				  {
+					  auto name = children[ 1 ][ 1 ].asString();
+					  //   if (symTable)
+					  //   auto struct_ty = QualifiedType(
+
+					  //   )
 					  UNIMPLEMENTED( "pre declaration" );
 				  }
 				  else
@@ -117,12 +132,16 @@ int Declaration::reg()
 					  auto la = children[ 1 ][ 0 ].asString();
 					  auto has_id = la == "IDENTIFIER";
 					  auto struct_ty = get<QualifiedType>( codegen( children[ has_id ? 3 : 2 ] ) );
+
 					  if ( has_id )
 					  {  // struct A without typedefs is named "struct.A"
-						  auto name = "struct." + children[ 1 ][ 1 ].asString();
-						  struct_ty.as<StructType>()->setName( name );
+						  auto name = children[ 1 ][ 1 ].asString();
+						  auto fullName = "struct." + name;
 
-						  symTable.insert( name, struct_ty );
+						  static_cast<StructType *>( struct_ty.as<mty::Struct>()->type )->setName( fullName );
+						  struct_ty.as<mty::Struct>()->setName( name );
+
+						  symTable.insert( fullName, struct_ty );
 					  }
 					  return struct_ty;
 				  }
@@ -226,7 +245,6 @@ int Declaration::reg()
 						  if ( child.isObject() )
 						  {
 							  auto decl = get<QualifiedDecl>( codegen( child ) );
-							  symTable.insert( decl.name.unwrap(), decl.type );
 							  args.emplace_back( decl );
 						  }
 					  }
@@ -274,16 +292,7 @@ int Declaration::reg()
 			  }
 			  auto &child = children[ 1 ];
 			  auto type = child[ "type" ].asString();
-			  if ( type == "abstract_declarator" )
-			  {
-				  UNIMPLEMENTED();
-			  }
-			  else
-			  {
-				  auto decl = get<QualifiedDecl>( codegen( child, &builder ) );
-				  dbg( "in parameter_declaration: ", decl );
-				  return decl;
-			  }
+			  return get<QualifiedDecl>( codegen( child, &builder ) );
 		  } ) },
 		/* VERIFIED -> QualifiedDecl */
 		{ "declarator", pack_fn<QualifiedTypeBuilder *, QualifiedDecl>( []( Json::Value &node, QualifiedTypeBuilder *const &builder ) -> QualifiedDecl {
@@ -291,6 +300,91 @@ int Declaration::reg()
 			  auto &children = node[ "children" ];
 			  codegen( children[ 0 ], builder );
 			  return get<QualifiedDecl>( codegen( children[ 1 ], builder ) );
+		  } ) },
+		{ "abstract_declarator", pack_fn<QualifiedTypeBuilder *, QualifiedDecl>( []( Json::Value &node, QualifiedTypeBuilder *const &builder ) -> QualifiedDecl {
+			  auto &children = node[ "children" ];
+			  auto decl = codegen( children[ 0 ], builder );
+			  if ( children.size() > 1 )
+			  {
+				  return get<QualifiedDecl>( codegen( children[ 1 ], builder ) );
+			  }
+			  else
+			  {
+				  if ( children[ 0 ][ "type" ].asString() == "pointer" )
+				  {
+					  return QualifiedDecl( builder->build() );
+				  }
+				  else
+				  {
+					  return get<QualifiedDecl>( decl );
+				  }
+			  }
+		  } ) },
+		{ "direct_abstract_declarator", pack_fn<QualifiedTypeBuilder *, QualifiedDecl>( []( Json::Value &node, QualifiedTypeBuilder *const &builder ) -> QualifiedDecl {
+			  // with arg = QualifiedTypeBuilder *
+			  auto &children = node[ "children" ];
+
+			  // direct_declarator -> direct_declarator ...
+
+			  int an = children[ 0 ].isObject() ? 1 : 0;
+
+			  if ( children.size() >= 3 && children[ 1 ].isObject() &&
+				   children[ 1 ][ "type" ].asString() == "abstract_declarator" )
+			  {
+				  return get<QualifiedDecl>( codegen( children[ 1 ], builder ) );
+			  }
+
+			  auto la = children[ an ][ 1 ].asString();
+			  if ( la == "[" )
+			  {
+				  if ( children.size() - an == 3 )
+				  {  // w [ X ]
+					  builder->add_level( std::make_shared<mty::Array>( builder->get_type(), 10 ) );
+					  TODO( "ARRAY LENGTH NOT IMPLEMENTED" );
+					  if ( an != 0 )
+					  {
+						  return get<QualifiedDecl>( codegen( children[ 0 ], builder ) );
+					  }
+					  else
+					  {
+						  return QualifiedDecl( builder->build() );
+					  }
+				  }
+				  else
+				  {  // w [ ]
+					  UNIMPLEMENTED();
+				  }
+			  }
+			  else if ( la == "(" )
+			  {
+				  std::vector<QualifiedDecl> args;
+				  for ( int j = an + 1; j < children.size() - 1; ++j )
+				  {
+					  auto &child = children[ j ];
+					  if ( child.isObject() )
+					  {
+						  auto decl = get<QualifiedDecl>( codegen( child ) );
+						  args.emplace_back( decl );
+					  }
+				  }
+				  builder->add_level( std::make_shared<mty::Function>(
+					builder->get_type(), args ) );
+
+				  if ( an != 0 )
+				  {
+					  return get<QualifiedDecl>( codegen( children[ 0 ], builder ) );
+				  }
+				  else
+				  {
+					  return QualifiedDecl( builder->build() );
+				  }
+			  }
+			  else
+			  {
+				  INTERNAL_ERROR();
+			  }
+
+			  INTERNAL_ERROR();
 		  } ) },
 		/* VERIFIED -> void */
 		{ "pointer", pack_fn<QualifiedTypeBuilder *, VoidType>( []( Json::Value &node, QualifiedTypeBuilder *const &builder ) -> VoidType {
@@ -330,7 +424,7 @@ int Declaration::reg()
 
 			  for ( int i = 0; i < children.size(); ++i )
 			  {
-				  auto child = children[ i ][ "children" ][ 0 ][ 1 ].asString();
+				  auto child = children[ i ][ 1 ].asString();
 				  if ( child == "const" ) type_qualifier |= TQ_CONST;
 				  if ( child == "volatile" ) type_qualifier |= TQ_VOLATILE;
 			  }

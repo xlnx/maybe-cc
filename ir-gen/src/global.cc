@@ -9,3 +9,4 @@ BasicBlock *currentBB;
 MsgList *infoList;
 SymbolTable symTable = SymbolTable();
 bool stack_trace = false;
+std::string decl_indent;

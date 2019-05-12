@@ -5,6 +5,11 @@
 class QualifiedTypeBuilder;
 class TypeView;
 
+namespace mty
+{
+struct Function;
+}
+
 class QualifiedType
 {
 	friend class QualifiedTypeBuilder;
@@ -17,6 +22,54 @@ private:
 
 	QualifiedType() = default;
 
+	bool is_same_without_cv_from_index(
+	  const QualifiedType &other, std::size_t idx ) const
+	{
+		if ( !this->list[ idx ]->is_same_without_cv( *other.list[ idx ] ) ) return false;
+		if ( idx-- == 0 ) return true;
+		do
+		{
+			if ( !this->list[ idx ]->is_same( *other.list[ idx ] ) ) return false;
+		} while ( idx-- != 0 );
+		return true;
+	}
+
+	bool is_same_discard_qualifiers_from_index(
+	  const QualifiedType &other, std::size_t idx ) const
+	{
+		do
+		{
+			if ( !this->list[ idx ]->is_same_without_cv( *other.list[ idx ] ) ) return false;
+		} while ( idx-- != 0 );
+		return true;
+	}
+
+	bool is_qualifiers_compatible_from_index(
+	  const QualifiedType &other, std::size_t idx ) const
+	{
+		auto need_strict = this->list[ idx ]->is<mty::Function>();
+		if ( !( int( this->list[ idx ]->is_const ) >= int( other.list[ idx ]->is_const ) &&
+				int( this->list[ idx ]->is_volatile ) >= int( other.list[ idx ]->is_volatile ) ) ) return false;
+		if ( idx-- == 0 ) return true;
+
+		do
+		{
+			if ( need_strict )
+			{
+				if ( !( int( this->list[ idx ]->is_const ) == int( other.list[ idx ]->is_const ) &&
+						int( this->list[ idx ]->is_volatile ) == int( other.list[ idx ]->is_volatile ) ) ) return false;
+			}
+			else
+			{
+				if ( !( int( this->list[ idx ]->is_const ) >= int( other.list[ idx ]->is_const ) &&
+						int( this->list[ idx ]->is_volatile ) >= int( other.list[ idx ]->is_volatile ) ) ) return false;
+			}
+
+		} while ( idx-- != 0 );
+
+		return true;
+	}
+
 public:
 	QualifiedType( const std::shared_ptr<mty::Qualified> &type )
 	{
@@ -27,6 +80,27 @@ public:
 	QualifiedType( QualifiedType && ) = default;
 	QualifiedType &operator=( const QualifiedType & ) = default;
 	QualifiedType &operator=( QualifiedType && ) = default;
+
+	bool is_same_without_cv( const QualifiedType &other ) const
+	{
+		if ( this->list.size() != other.list.size() ) return false;
+		return is_same_without_cv_from_index(
+		  other, this->list.size() - 1 );
+	}
+
+	bool is_same_discard_qualifiers( const QualifiedType &other ) const
+	{
+		if ( this->list.size() != other.list.size() ) return false;
+		return is_same_discard_qualifiers_from_index(
+		  other, this->list.size() - 1 );
+	}
+
+	bool is_qualifiers_compatible( const QualifiedType &other ) const
+	{
+		if ( this->list.size() != other.list.size() ) return false;
+		return is_qualifiers_compatible_from_index(
+		  other, this->list.size() - 1 );
+	}
 
 	operator Type *() const
 	{
@@ -44,14 +118,23 @@ public:
 	}
 
 	template <typename T>
-	T *as() const
+	T *as()
 	{
-		return static_cast<T *>( (Type *)*this );
+		static_assert( std::is_base_of<mty::Qualified, T>::value );
+		return dynamic_cast<T *>( this->list.back().get() );
+	}
+
+	template <typename T>
+	const T *as() const
+	{
+		static_assert( std::is_base_of<mty::Qualified, T>::value );
+		return dynamic_cast<const T *>( this->list.back().get() );
 	}
 
 	template <typename T>
 	bool is() const
 	{
+		static_assert( std::is_base_of<mty::Qualified, T>::value );
 		return dynamic_cast<const T *>( this->list.back().get() );
 	}
 
@@ -85,6 +168,32 @@ public:
 	const mty::Qualified *get() const
 	{
 		return this->type->list[ this->index ].get();
+	}
+
+	// bool is_same_without_cv( const TypeView &other ) const
+	// {
+	// 	if ( this->index != other.index ) return false;
+	// 	return this->type->is_same_without_cv_from_index(
+	// 	  *other.type, index );
+	// }
+
+	bool is_same_discard_qualifiers( const TypeView &other ) const
+	{
+		if ( this->index != other.index ) return false;
+		return this->type->is_same_discard_qualifiers_from_index(
+		  *other.type, index );
+	}
+
+	bool is_qualifiers_compatible( const TypeView &other ) const
+	{
+		if ( this->index != other.index ) return false;
+		return this->type->is_qualifiers_compatible_from_index(
+		  *other.type, index );
+	}
+
+	bool has_next() const
+	{
+		return this->index != 0;
 	}
 
 	TypeView &next()
@@ -151,6 +260,7 @@ public:
 	QualifiedTypeBuilder( const QualifiedType &type, bool is_const = false, bool is_volatile = false ) :
 	  list{ type.list }
 	{
+		TODO( "handle opaque type" );
 		auto idx = list.size() - 1;
 		while ( list[ idx ]->is<mty::Array>() )
 		{

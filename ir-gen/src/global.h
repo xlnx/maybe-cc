@@ -11,3 +11,4 @@ extern BasicBlock *currentBB;
 extern ffi::MsgList *infoList;
 extern SymbolTable symTable;
 extern bool stack_trace;
+extern std::string decl_indent;
