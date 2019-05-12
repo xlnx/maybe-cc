@@ -120,30 +120,64 @@ int Declaration::reg()
 				  if ( children.size() < 3 )
 				  {
 					  auto name = children[ 1 ][ 1 ].asString();
-					  //   if (symTable)
-					  //   auto struct_ty = QualifiedType(
+					  auto fullName = "struct." + name;
 
-					  //   )
-					  UNIMPLEMENTED( "pre declaration" );
+					  if ( auto sym = symTable.find( fullName ) )
+					  {
+						  if ( sym->is_type() ) return sym->as_type();
+						  INTERNAL_ERROR();
+					  }
+					  else
+					  {
+						  return QualifiedType( std::make_shared<mty::Struct>( name ) );
+					  }
 				  }
 				  else
 				  {
 					  Json::Value *struct_decl;
 					  auto la = children[ 1 ][ 0 ].asString();
 					  auto has_id = la == "IDENTIFIER";
-					  auto struct_ty = get<QualifiedType>( codegen( children[ has_id ? 3 : 2 ] ) );
+
+					  auto struct_ty = has_id ? std::make_shared<mty::Struct>( children[ 1 ][ 1 ].asString() ) : std::make_shared<mty::Struct>();
+
+					  {
+						  auto &roots = children[ has_id ? 3 : 2 ][ "children" ];
+
+						  std::vector<QualifiedDecl> decls;
+
+						  for ( int i = 0; i < roots.size(); ++i )
+						  {
+							  auto &node = roots[ i ];
+							  auto &children = node[ "children" ];
+
+							  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
+
+							  for ( int i = 1; i < children.size(); ++i )
+							  {
+								  auto &child = children[ i ];
+								  if ( child.isObject() )
+								  {
+									  auto builder = declspec.into_type_builder( children[ 0 ] );
+									  auto decl = get<QualifiedDecl>( codegen( children[ i ], &builder ) );
+									  decls.emplace_back( std::move( decl ) );
+								  }
+							  }
+						  }
+
+						  struct_ty->setBody( decls, node );
+					  }
+
+					  auto type = QualifiedType( struct_ty );
 
 					  if ( has_id )
 					  {  // struct A without typedefs is named "struct.A"
 						  auto name = children[ 1 ][ 1 ].asString();
 						  auto fullName = "struct." + name;
 
-						  static_cast<StructType *>( struct_ty.as<mty::Struct>()->type )->setName( fullName );
-						  struct_ty.as<mty::Struct>()->setName( name );
-
-						  symTable.insert( fullName, struct_ty );
+						  symTable.insert( fullName, type );
 					  }
-					  return struct_ty;
+
+					  return type;
 				  }
 			  }
 			  else
@@ -152,32 +186,7 @@ int Declaration::reg()
 			  }
 		  } ) },
 		{ "struct_declaration_list_i", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
-			  auto &roots = node[ "children" ];
 
-			  std::vector<QualifiedDecl> decls;
-
-			  for ( int i = 0; i < roots.size(); ++i )
-			  {
-				  auto &node = roots[ i ];
-				  auto &children = node[ "children" ];
-
-				  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
-
-				  for ( int i = 1; i < children.size(); ++i )
-				  {
-					  auto &child = children[ i ];
-					  if ( child.isObject() )
-					  {
-						  auto builder = declspec.into_type_builder( children[ 0 ] );
-						  auto decl = get<QualifiedDecl>( codegen( children[ i ], &builder ) );
-						  decls.emplace_back( std::move( decl ) );
-					  }
-				  }
-			  }
-
-			  auto struct_ty = QualifiedType( std::make_shared<mty::Struct>( decls ) );
-
-			  return struct_ty;
 		  } ) },
 		/* VERIFIED -> DeclarationSpecifiers */
 		{ "specifier_qualifier_list_i", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {

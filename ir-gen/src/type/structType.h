@@ -9,24 +9,35 @@ struct Struct : Qualified
 {
 	static constexpr auto self_type = TypeName::StructType;
 
-	struct Defination
-	{
-		std::map<std::string, QualifiedType> comps;
-	};
-
-	std::shared_ptr<Defination> def;
+	std::map<std::string, QualifiedType> comps;
 	Option<std::string> name;
 
-	Struct( const std::vector<QualifiedDecl> &comps ) :
-	  Qualified( StructType::create( TheContext, map_comp( comps ) ) ),
-	  def( std::make_shared<Defination>() )
+	Struct() :
+	  Qualified( StructType::create( TheContext ) )
 	{
 		type_name = self_type;
+	}
+
+	Struct( const std::string &name ) :
+	  Qualified( StructType::create( TheContext, "struct." + name ) )
+	{
+		type_name = self_type;
+		this->name = name;
+	}
+
+	void setBody( const std::vector<QualifiedDecl> &comps, Json::Value &ast )
+	{
+		if ( !static_cast<llvm::StructType *>( this->type )->isOpaque() )
+		{
+			infoList->add_msg( MSG_TYPE_ERROR, fmt( "`struct ", name.unwrap(), "` redefined" ), ast );
+			HALT();
+		}
+		static_cast<llvm::StructType *>( this->type )->setBody( map_comp( comps ) );
 		for ( auto &comp : comps )
 		{
 			if ( comp.name.is_some() )
 			{
-				this->def->comps.emplace( comp.name.unwrap(), comp.type );
+				this->comps.emplace( comp.name.unwrap(), comp.type );
 			}
 			else
 			{
@@ -35,24 +46,18 @@ struct Struct : Qualified
 		}
 	}
 
-	Struct &setName( std::string const &new_name )
-	{
-		this->name = new_name;
-		return *this;
-	}
-
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
 	{
 		if ( is_const ) os << "const ";
 		if ( is_volatile ) os << "volatile ";
 		os << "struct";
 		if ( this->name.is_some() ) os << " " << this->name.unwrap();
-		if ( this->def )
+		if ( !static_cast<llvm::StructType *>( this->type )->isOpaque() )
 		{
 			auto indent = decl_indent;
 			decl_indent += "  ";
 			os << " {\n";
-			for ( auto &arg : this->def->comps )
+			for ( auto &arg : this->comps )
 			{
 				os << decl_indent << arg.first << " : " << arg.second << ";\n";
 			}

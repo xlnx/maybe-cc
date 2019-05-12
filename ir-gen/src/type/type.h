@@ -260,7 +260,6 @@ public:
 	QualifiedTypeBuilder( const QualifiedType &type, bool is_const = false, bool is_volatile = false ) :
 	  list{ type.list }
 	{
-		TODO( "handle opaque type" );
 		auto idx = list.size() - 1;
 		while ( list[ idx ]->is<mty::Array>() )
 		{
