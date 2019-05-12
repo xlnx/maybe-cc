@@ -185,9 +185,6 @@ int Declaration::reg()
 				  UNIMPLEMENTED( "union" );
 			  }
 		  } ) },
-		{ "struct_declaration_list_i", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
-
-		  } ) },
 		/* VERIFIED -> DeclarationSpecifiers */
 		{ "specifier_qualifier_list_i", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
 			  return handle_decl( node );
@@ -236,6 +233,7 @@ int Declaration::reg()
 				  {
 					  if ( children.size() == 4 )
 					  {  // w [ X ]
+						  TODO( "ARRAY OF INCOMPLETE TYPE" );
 						  builder->add_level( std::make_shared<mty::Array>( builder->get_type(), 10 ) );
 						  TODO( "ARRAY LENGTH NOT IMPLEMENTED" );
 						  return get<QualifiedDecl>( codegen( children[ 0 ], builder ) );

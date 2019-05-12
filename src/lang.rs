@@ -443,6 +443,7 @@ lang! {
     statement => [
         labeled_statement |@flatten|,
         compound_statement |@flatten|,
+        declaration_statement |@flatten|,
         expression_statement |@flatten|,
         selection_statement |@flatten|,
         iteration_statement |@flatten|,
@@ -455,9 +456,10 @@ lang! {
     ],
     compound_statement => [
         enter_block leave_block,
-        enter_block statement_list leave_block,
-        enter_block declaration_list leave_block,
-        enter_block declaration_list statement_list leave_block
+        enter_block statement_list leave_block
+    ],
+    declaration_statement => [
+        declaration |@flatten|
     ],
     declaration_list => [
         declaration |@flatten|,

@@ -47,11 +47,6 @@ public:
 class SymbolTable
 {
 public:
-	SymbolTable()
-	{
-		symbolStack.emplace_back();
-	}
-
 	const Symbol *find( const std::string &str ) const
 	{
 		for ( auto target = symbolStack.rbegin(); target != symbolStack.rend(); ++target )

@@ -75,7 +75,7 @@ public:
 			}
 			else
 			{
-				infoList->add_msg( MSG_TYPE_ERROR, "not derefable", ast );
+				infoList->add_msg( MSG_TYPE_ERROR, "lvalue required for dereference", ast );
 				HALT();
 			}
 		}

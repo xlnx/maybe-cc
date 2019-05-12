@@ -44,13 +44,33 @@ protected:
 public:
 	Value *deref( TypeView &view, Value *val, Json::Value &ast ) const override
 	{
-		view.next();
+		auto ty = view.next()->type;
+		if ( ty->isStructTy() )
+		{
+			if ( static_cast<const llvm::StructType *>( ty )->isOpaque() )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_ERROR,
+				  fmt( "dereferencing incomplete type `", view, "` is not allowed" ), ast );
+				HALT();
+			}
+		}
 		return val;
 	}
 
 	Value *offset( TypeView &view, Value *val, Value *off, Json::Value &ast ) const override
 	{
-		view.next();
+		auto ty = view.next()->type;
+		if ( ty->isStructTy() )
+		{
+			if ( static_cast<const llvm::StructType *>( ty )->isOpaque() )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_ERROR,
+				  fmt( "dereferencing incomplete type `", view, "` is not allowed" ), ast );
+				HALT();
+			}
+		}
 		return Builder.CreateGEP( val, off );
 	}
 };
