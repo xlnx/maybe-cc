@@ -32,7 +32,6 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 	{
 		if ( children.size() - an == 3 )
 		{  // w [ X ]
-			TODO( "ARRAY OF INCOMPLETE TYPE" );
 			auto len_val = get<QualifiedValue>( codegen( children[ an + 1 ] ) );
 
 			auto len = dyn_cast_or_null<Constant>( len_val.value( children[ an + 1 ] ).get() );
@@ -67,7 +66,25 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 				}
 			}
 
-			builder->add_level( std::make_shared<mty::Array>( builder->get_type(), len_i ) );
+			auto elem_ty = builder->get_type();
+			if ( !ArrayType::isValidElementType( elem_ty->type ) )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_ERROR,
+				  fmt( "array declared with invalid element type `", builder->build(), "`" ),
+				  node );
+				HALT();
+			}
+			if ( !elem_ty->is_complete() )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_ERROR,
+				  fmt( "array declared with incomplete element type `", builder->build(), "`" ),
+				  node );
+				HALT();
+			}
+
+			builder->add_level( std::make_shared<mty::Array>( elem_ty->type, len_i ) );
 
 			if ( an != 0 )
 			{
@@ -96,7 +113,7 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 			}
 		}
 		builder->add_level( std::make_shared<mty::Function>(
-		  builder->get_type(), args ) );
+		  builder->get_type()->type, args ) );
 
 		if ( an != 0 )
 		{
@@ -165,6 +182,15 @@ int Declaration::reg()
 						  {
 							  TODO( "storage specifiers not handled" );
 
+							  if ( !type.as<mty::Qualified>()->is_allocable() )
+							  {
+								  infoList->add_msg(
+									MSG_TYPE_ERROR,
+									fmt( "variable has incomplete type `", type, "`" ),
+									children[ 0 ] );
+								  HALT();
+							  }
+
 							  // deal with decl
 							  auto alloc = Builder.CreateAlloca( type );
 							  alloc->setName( name );
@@ -175,7 +201,7 @@ int Declaration::reg()
 							  if ( children.size() > 1 )  // decl with init
 							  {
 								  auto init = get<QualifiedValue>( codegen( children[ 2 ], &builder ) );
-								  Builder.CreateStore( alloc, init.value( children[ 2 ] ).get() );
+								  Builder.CreateStore( init.value( children[ 2 ] ).get(), alloc );
 							  }
 						  }
 					  }
@@ -282,6 +308,19 @@ int Declaration::reg()
 		/* VERIFIED -> DeclarationSpecifiers */
 		{ "specifier_qualifier_list_i", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
 			  return handle_decl( node );
+		  } ) },
+		{ "type_name", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
+			  auto &children = node[ "children" ];
+			  auto builder = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) )
+							   .into_type_builder( children[ 0 ] );
+			  if ( children.size() > 1 )
+			  {
+				  return get<QualifiedDecl>( codegen( children[ 1 ], &builder ) ).type;
+			  }
+			  else
+			  {
+				  return builder.build();
+			  }
 		  } ) },
 		{ "userdefined_type_name", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
 			  auto name = node[ "children" ][ 0 ][ 1 ].asString();
@@ -424,7 +463,7 @@ int Declaration::reg()
 
 			  auto base = builder->get_type();
 			  builder->add_level( std::make_shared<mty::Pointer>(
-				base,
+				base->type,
 				( type_qualifier & TQ_CONST ) != 0,
 				( type_qualifier & TQ_VOLATILE ) != 0 ) );
 

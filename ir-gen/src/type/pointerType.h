@@ -9,7 +9,10 @@ struct Pointer : Derefable
 	static constexpr auto self_type = TypeName::PointerType;
 
 	Pointer( Type *base_type, bool is_const = false, bool is_volatile = false ) :
-	  Derefable( PointerType::getUnqual( base_type ), is_const, is_volatile )
+	  Derefable(
+		base_type->isVoidTy() ? PointerType::getUnqual( TypeView::getCharTy( true )->type )
+							  : PointerType::getUnqual( base_type ),
+		is_const, is_volatile )
 	{
 		type_name = self_type;
 	}

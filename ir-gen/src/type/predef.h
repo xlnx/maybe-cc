@@ -65,6 +65,20 @@ struct Qualified
 			   this->is_volatile == other.is_volatile;
 	}
 
+	bool is_complete() const
+	{
+		if ( auto ty = dyn_cast_or_null<llvm::StructType>( type ) )
+		{
+			return !ty->isOpaque();
+		}
+		return true;
+	}
+
+	bool is_allocable() const
+	{
+		return this->is_complete() && !type->isVoidTy() && !type->isFunctionTy();
+	}
+
 	virtual std::shared_ptr<Qualified> clone() const = 0;
 	virtual void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const = 0;
 

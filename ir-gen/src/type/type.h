@@ -8,7 +8,8 @@ class TypeView;
 namespace mty
 {
 struct Function;
-}
+struct Struct;
+}  // namespace mty
 
 class QualifiedType
 {
@@ -282,9 +283,9 @@ public:
 		list.emplace_back( obj );
 		return *this;
 	}
-	Type *get_type() const
+	const mty::Qualified *get_type() const
 	{
-		return list.back()->type;
+		return list.back().get();
 	}
 	QualifiedType build()
 	{

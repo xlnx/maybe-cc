@@ -1,5 +1,23 @@
 #include "expression.h"
 
+QualifiedValue size_of_type( const mty::Qualified *type, Json::Value &ast )
+{
+	auto &value_type = TypeView::getLongTy( false );
+	if ( !type->is_complete() )
+	{
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "invalid application of `sizeof` to an incomplete type" ), ast );
+		HALT();
+	}
+	auto bits = type->type->isVoidTy() ? 8 : type->type->getPrimitiveSizeInBits();
+	if ( ( bits & 0x7 ) != 0 ) TODO( "handle bits" );
+	return QualifiedValue(
+	  value_type,
+	  Constant::getIntegerValue(
+		value_type->type, APInt( value_type->as<mty::Integer>()->bits, bits / 8, false ) ) );
+}
+
 static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 {
 	auto &children = node[ "children" ];
@@ -266,7 +284,6 @@ int Expression::reg()
 				  infoList->add_msg( MSG_TYPE_ERROR,
 									 fmt( "cannot assign to const-qualified type `", type, "`" ),
 									 children[ 0 ] );
-				  HALT();
 			  }
 			  lhs = lhs.deref( children[ 0 ] );
 
@@ -287,6 +304,13 @@ int Expression::reg()
 				  static JumpTable<QualifiedValue( Json::Value & children, QualifiedValue & val, Json::Value & ast )> __ = {
 					  { "*", []( Json::Value &children, QualifiedValue &val, Json::Value &ast ) -> QualifiedValue {
 						   return val.value( children[ 1 ] ).deref( ast );
+					   } },
+					  { "&", []( Json::Value &children, QualifiedValue &val, Json::Value &ast ) -> QualifiedValue {
+						   UNIMPLEMENTED();
+						   //    return val.value( children[ 1 ] ).deref( ast );
+					   } },
+					  { "sizeof", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+						   return size_of_type( val.get_type().get(), children[ 1 ] );
 					   } }
 				  };
 
@@ -302,7 +326,8 @@ int Expression::reg()
 			  else
 			  {
 				  // sizeof ( TYPE )
-				  UNIMPLEMENTED();
+				  auto type = get<QualifiedType>( codegen( children[ 2 ] ) );
+				  return size_of_type( type.as<mty::Qualified>(), children[ 2 ] );
 			  }
 		  } ) },
 		{ "postfix_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {

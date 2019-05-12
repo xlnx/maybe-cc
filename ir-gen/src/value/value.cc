@@ -186,6 +186,20 @@ QualifiedValue &QualifiedValue::cast_into_storage( const TypeView &dst, Json::Va
 					  fmt( "assigning to `", dst, "` from `", this->type, "` discards qualifiers" ),
 					  node );
 				}
+				if ( !dest->is<mty::Void>() )
+				{
+					if ( !dest.is_same_discard_qualifiers( TypeView::getCharTy( true ) ) )
+					{
+						this->val = Builder.CreatePointerCast( this->val, dst->type );
+					}
+				}
+				else if ( !type->is<mty::Void>() )
+				{
+					if ( !type.is_same_discard_qualifiers( TypeView::getCharTy( true ) ) )
+					{
+						this->val = Builder.CreatePointerCast( this->val, dst->type );
+					}
+				}
 			}
 		}
 		else if ( this->type->is<mty::Integer>() )

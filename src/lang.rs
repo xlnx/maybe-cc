@@ -412,8 +412,8 @@ lang! {
         identifier_list "," IDENTIFIER
     ],
     type_name => [
-        specifier_qualifier_list,
-        specifier_qualifier_list abstract_declarator
+        specifier_qualifier_list_i,
+        specifier_qualifier_list_i abstract_declarator
     ],
     abstract_declarator => [
         pointer,
