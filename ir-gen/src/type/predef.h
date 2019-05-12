@@ -76,7 +76,7 @@ struct Qualified
 
 	bool is_allocable() const
 	{
-		return this->is_complete() && !type->isVoidTy() && !type->isFunctionTy();
+		return this->is_complete() && !type->isVoidTy();
 	}
 
 	virtual std::shared_ptr<Qualified> clone() const = 0;
