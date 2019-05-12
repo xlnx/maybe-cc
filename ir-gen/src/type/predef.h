@@ -41,14 +41,14 @@ struct Qualified
 	template <typename T>
 	bool is() const
 	{
-		static_assert( std::is_base_of<mty::Qualified, T>::value );
+		static_assert( std::is_base_of<mty::Qualified, T>::value, "invalid cast" );
 		return dynamic_cast<const T *>( this ) != nullptr;
 	}
 
 	template <typename T>
 	const T *as() const
 	{
-		static_assert( std::is_base_of<mty::Qualified, T>::value );
+		static_assert( std::is_base_of<mty::Qualified, T>::value, "invalid cast" );
 		return dynamic_cast<const T *>( this );
 	}
 
