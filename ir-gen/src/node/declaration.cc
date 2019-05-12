@@ -23,6 +23,96 @@ static DeclarationSpecifiers handle_decl( Json::Value &node )
 	return declspec;
 }
 
+static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuilder *const &builder, int an )
+{
+	auto &children = node[ "children" ];
+
+	auto la = *children[ an ][ 1 ].asCString();
+	if ( la == '[' )
+	{
+		if ( children.size() - an == 3 )
+		{  // w [ X ]
+			TODO( "ARRAY OF INCOMPLETE TYPE" );
+			auto len_val = get<QualifiedValue>( codegen( children[ an + 1 ] ) );
+
+			auto len = dyn_cast_or_null<Constant>( len_val.value( children[ an + 1 ] ).get() );
+			if ( !len )
+			{
+				infoList->add_msg( MSG_TYPE_ERROR, fmt( "array length must be constant" ), children[ an + 1 ] );
+				auto &type = TypeView::getLongTy( false );
+				len = Constant::getIntegerValue(
+				  type->type, APInt( type->as<mty::Integer>()->bits, 1, false ) );
+			}
+			std::size_t len_i = 1;
+			if ( !len->getType()->isIntegerTy() )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_ERROR,
+				  fmt( "size of array has non-integer type `", len_val.get_type(), "`" ),
+				  children[ an + 1 ] );
+			}
+			else
+			{
+				auto ci = dyn_cast_or_null<ConstantInt>( len );
+				if ( ci->isNegative() )
+				{
+					infoList->add_msg(
+					  MSG_TYPE_ERROR,
+					  fmt( "array has a negative size" ),
+					  children[ an + 1 ] );
+				}
+				else
+				{
+					len_i = ci->getZExtValue();
+				}
+			}
+
+			builder->add_level( std::make_shared<mty::Array>( builder->get_type(), len_i ) );
+
+			if ( an != 0 )
+			{
+				return get<QualifiedDecl>( codegen( children[ an - 1 ], builder ) );
+			}
+			else
+			{
+				return QualifiedDecl( builder->build() );
+			}
+		}
+		else
+		{  // w [ ]
+			UNIMPLEMENTED();
+		}
+	}
+	else if ( la == '(' )
+	{
+		std::vector<QualifiedDecl> args;
+		for ( int j = 2; j < children.size() - 1; ++j )
+		{
+			auto &child = children[ j ];
+			if ( child.isObject() )
+			{
+				auto decl = get<QualifiedDecl>( codegen( child ) );
+				args.emplace_back( decl );
+			}
+		}
+		builder->add_level( std::make_shared<mty::Function>(
+		  builder->get_type(), args ) );
+
+		if ( an != 0 )
+		{
+			return get<QualifiedDecl>( codegen( children[ an - 1 ], builder ) );
+		}
+		else
+		{
+			return QualifiedDecl( builder->build() );
+		}
+	}
+	else
+	{
+		INTERNAL_ERROR();
+	}
+}
+
 int Declaration::reg()
 {
 	static decltype( handlers ) decl = {
@@ -114,8 +204,8 @@ int Declaration::reg()
 		{ "struct_or_union_specifier", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
 			  auto &children = node[ "children" ];
 
-			  auto struct_or_union = children[ 0 ][ 1 ].asString();
-			  if ( struct_or_union == "struct" )
+			  auto struct_or_union = *children[ 0 ][ 1 ].asCString();
+			  if ( struct_or_union == 's' )
 			  {
 				  if ( children.size() < 3 )
 				  {
@@ -180,9 +270,13 @@ int Declaration::reg()
 					  return type;
 				  }
 			  }
-			  else
+			  else if ( struct_or_union == 'u' )
 			  {
 				  UNIMPLEMENTED( "union" );
+			  }
+			  else
+			  {
+				  INTERNAL_ERROR();
 			  }
 		  } ) },
 		/* VERIFIED -> DeclarationSpecifiers */
@@ -228,44 +322,7 @@ int Declaration::reg()
 			  // direct_declarator -> direct_declarator ...
 			  if ( children[ 0 ].isObject() )
 			  {
-				  auto la = children[ 1 ][ 1 ].asString();
-				  if ( la == "[" )
-				  {
-					  if ( children.size() == 4 )
-					  {  // w [ X ]
-						  TODO( "ARRAY OF INCOMPLETE TYPE" );
-						  builder->add_level( std::make_shared<mty::Array>( builder->get_type(), 10 ) );
-						  TODO( "ARRAY LENGTH NOT IMPLEMENTED" );
-						  return get<QualifiedDecl>( codegen( children[ 0 ], builder ) );
-					  }
-					  else
-					  {  // w [ ]
-						  UNIMPLEMENTED();
-					  }
-				  }
-				  else if ( la == "(" )
-				  {
-					  std::vector<QualifiedDecl> args;
-					  for ( int j = 2; j < children.size() - 1; ++j )
-					  {
-						  auto &child = children[ j ];
-						  if ( child.isObject() )
-						  {
-							  auto decl = get<QualifiedDecl>( codegen( child ) );
-							  args.emplace_back( decl );
-						  }
-					  }
-					  builder->add_level( std::make_shared<mty::Function>(
-						builder->get_type(), args ) );
-
-					  return get<QualifiedDecl>( codegen( children[ 0 ], builder ) );
-				  }
-				  else
-				  {
-					  INTERNAL_ERROR();
-				  }
-
-				  INTERNAL_ERROR();
+				  return handle_function_array( node, builder, 1 );
 			  }
 			  else if ( children[ 0 ].isArray() )
 			  {
@@ -341,57 +398,7 @@ int Declaration::reg()
 				  return get<QualifiedDecl>( codegen( children[ 1 ], builder ) );
 			  }
 
-			  auto la = children[ an ][ 1 ].asString();
-			  if ( la == "[" )
-			  {
-				  if ( children.size() - an == 3 )
-				  {  // w [ X ]
-					  builder->add_level( std::make_shared<mty::Array>( builder->get_type(), 10 ) );
-					  TODO( "ARRAY LENGTH NOT IMPLEMENTED" );
-					  if ( an != 0 )
-					  {
-						  return get<QualifiedDecl>( codegen( children[ 0 ], builder ) );
-					  }
-					  else
-					  {
-						  return QualifiedDecl( builder->build() );
-					  }
-				  }
-				  else
-				  {  // w [ ]
-					  UNIMPLEMENTED();
-				  }
-			  }
-			  else if ( la == "(" )
-			  {
-				  std::vector<QualifiedDecl> args;
-				  for ( int j = an + 1; j < children.size() - 1; ++j )
-				  {
-					  auto &child = children[ j ];
-					  if ( child.isObject() )
-					  {
-						  auto decl = get<QualifiedDecl>( codegen( child ) );
-						  args.emplace_back( decl );
-					  }
-				  }
-				  builder->add_level( std::make_shared<mty::Function>(
-					builder->get_type(), args ) );
-
-				  if ( an != 0 )
-				  {
-					  return get<QualifiedDecl>( codegen( children[ 0 ], builder ) );
-				  }
-				  else
-				  {
-					  return QualifiedDecl( builder->build() );
-				  }
-			  }
-			  else
-			  {
-				  INTERNAL_ERROR();
-			  }
-
-			  INTERNAL_ERROR();
+			  return handle_function_array( node, builder, an );
 		  } ) },
 		/* VERIFIED -> void */
 		{ "pointer", pack_fn<QualifiedTypeBuilder *, VoidType>( []( Json::Value &node, QualifiedTypeBuilder *const &builder ) -> VoidType {

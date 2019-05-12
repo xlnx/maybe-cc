@@ -238,7 +238,7 @@ lang! {
         expression "," assignment_expression
     ],
     constant_expression => [
-        conditional_expression
+        conditional_expression |@flatten|
     ],
     declaration => [
         declaration_specifiers_i ";",

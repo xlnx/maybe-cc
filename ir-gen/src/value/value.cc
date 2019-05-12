@@ -59,7 +59,7 @@ void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &oth
 			}
 			else if ( irhs )
 			{
-				other.val = ilhs->is_signed ? Builder.CreateSIToFP( other.val, lhs->type ) : Builder.CreateUIToFP( other.val, lhs->type );
+				other.val = irhs->is_signed ? Builder.CreateSIToFP( other.val, lhs->type ) : Builder.CreateUIToFP( other.val, lhs->type );
 				other.type = self.type;
 			}
 			else  // FP FP
