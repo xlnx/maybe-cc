@@ -103,19 +103,19 @@ public:
 		  other, this->list.size() - 1 );
 	}
 
-	operator Type *() const
+	// operator Type *() const
+	// {
+	// 	return list.back()->type;
+	// }
+
+	const mty::Qualified *get() const
 	{
-		return list.back()->type;
+		return this->list.back().get();
 	}
 
-	Type *get() const
+	const mty::Qualified *operator->() const
 	{
-		return list.back()->type;
-	}
-
-	Type *operator->() const
-	{
-		return this->list.back()->type;
+		return this->list.back().get();
 	}
 
 	template <typename T>

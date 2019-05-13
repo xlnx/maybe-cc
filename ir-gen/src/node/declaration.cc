@@ -112,6 +112,45 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 				args.emplace_back( decl );
 			}
 		}
+		if ( args.size() != 1 || !args[ 0 ].type.is<mty::Void>() )
+		{
+			int errs = 0;
+			for ( int j = 2; j < children.size() - 1; ++j )
+			{
+				auto &child = children[ j ];
+				auto &arg = args[ j - 2 ];
+
+				if ( !arg.type->is_complete() )
+				{
+					infoList->add_msg(
+					  MSG_TYPE_ERROR,
+					  fmt( "variable of incomplete type `", arg.type, "` cannot be used as function parameter" ),
+					  child );
+					errs++;
+				}
+				else if ( !arg.type->is_valid_parameter_type() )
+				{
+					infoList->add_msg(
+					  MSG_TYPE_ERROR,
+					  fmt( "variable of type `", arg.type, "` cannot be used as function parameter" ),
+					  child );
+					errs++;
+				}
+				else if ( arg.type->is<mty::Function>() )
+				{
+					arg.type = DeclarationSpecifiers()
+								 .add_type( arg.type, child )
+								 .into_type_builder( child )
+								 .add_level( std::make_shared<mty::Pointer>( arg.type->type ) )
+								 .build();
+				}
+			}
+			if ( errs ) HALT();
+		}
+		else
+		{
+			args.clear();
+		}
 		builder->add_level( std::make_shared<mty::Function>(
 		  builder->get_type()->type, args ) );
 
@@ -128,6 +167,46 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 	{
 		INTERNAL_ERROR();
 	}
+}
+
+static std::vector<QualifiedDecl> get_structural_decl( Json::Value &node )
+{
+	auto &roots = node[ "children" ];
+	std::vector<QualifiedDecl> decls;
+
+	int errs = 0;
+
+	for ( int i = 0; i < roots.size(); ++i )
+	{
+		auto &node = roots[ i ];
+		auto &children = node[ "children" ];
+
+		auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
+
+		for ( int i = 1; i < children.size(); ++i )
+		{
+			auto &child = children[ i ];
+			if ( child.isObject() )
+			{
+				auto builder = declspec.into_type_builder( children[ 0 ] );
+				auto decl = get<QualifiedDecl>( codegen( children[ i ], &builder ) );
+				auto &type = decl.type;
+				if ( !type->is_valid_element_type() )
+				{
+					infoList->add_msg(
+					  MSG_TYPE_ERROR,
+					  fmt( "variable of type `", type, "` cannot be used as aggregrate member" ),
+					  children[ i ] );
+					++errs;
+				}
+				decls.emplace_back( std::move( decl ) );
+			}
+		}
+	}
+
+	if ( errs ) HALT();
+
+	return decls;
 }
 
 int Declaration::reg()
@@ -163,8 +242,8 @@ int Declaration::reg()
 						  auto &children = child[ "children" ];
 						  // name can never be empty because "declarator" != empty
 						  auto decl = get<QualifiedDecl>( codegen( children[ 0 ], &builder ) );
-						  auto type = decl.type;
-						  auto name = decl.name.unwrap();
+						  auto &type = decl.type;
+						  auto &name = decl.name.unwrap();
 
 						  if ( declspec.has_attribute( SC_TYPEDEF ) )  // deal with typedef
 						  {
@@ -180,8 +259,6 @@ int Declaration::reg()
 						  }
 						  else
 						  {
-							  TODO( "storage specifiers not handled" );
-
 							  if ( !type.as<mty::Qualified>()->is_allocable() )
 							  {
 								  infoList->add_msg(
@@ -190,18 +267,121 @@ int Declaration::reg()
 									children[ 0 ] );
 								  HALT();
 							  }
+							  else if ( type.is<mty::Function>() )
+							  {  // function declaration
+								  if ( children.size() > 1 )
+								  {
+									  infoList->add_msg(
+										MSG_TYPE_ERROR,
+										fmt( "only variables can be initialized" ),
+										child );
+								  }
+								  else if ( declspec.has_attribute( SC_STATIC ) )
+								  {
+									  if ( symTable.getLevel() > 0 )
+									  {
+										  infoList->add_msg(
+											MSG_TYPE_ERROR,
+											fmt( "function declared in block scope cannot have `static` storage class" ),
+											child );
+										  HALT();
+									  }
+								  }
+								  auto fn = mty::Function::get( name );
+								  if ( fn.is_none() )
+								  {
+									  auto ty = std::make_shared<QualifiedType>( type );
+									  auto fn_val = std::make_pair(
+										ty,
+										// std::make_shared<QualifiedType>( type ),
+										Function::Create(
+										  static_cast<FunctionType *>( type.get()->type ),
+										  GlobalValue::ExternalLinkage, name, TheModule.get() ) );
+									  mty::Function::declare( fn_val, name );
+									  symTable.insert( name, QualifiedValue( ty, fn_val.second ) );
+								  }
+								  else
+								  {
+									  auto &fn_val = *fn.unwrap();
+									  if ( !fn_val.first->is_same_without_cv( type ) )
+									  {
+										  infoList->add_msg(
+											MSG_TYPE_ERROR,
+											fmt( "conflict declaration of function `", name, "`" ),
+											child );
+										  HALT();
+									  }
+									  symTable.insert( name, QualifiedValue( fn_val.first, fn_val.second ) );
+								  }
+							  }
+							  else
+							  {  // variable declaration
 
-							  // deal with decl
-							  auto alloc = Builder.CreateAlloca( type );
-							  alloc->setName( name );
-							  symTable.insert( name, QualifiedValue( std::make_shared<QualifiedType>( type ),
-																	 alloc,
-																	 !type.is<mty::Address>() ) );
+								  Value *init = nullptr;
+								  if ( children.size() > 1 )  // decl with init
+								  {
+									  if ( declspec.has_attribute( SC_EXTERN ) )
+									  {
+										  infoList->add_msg(
+											MSG_TYPE_ERROR,
+											fmt( "external variable must not have an initializer" ),
+											children[ 2 ] );
+									  }
+									  auto val = get<QualifiedValue>( codegen( children[ 2 ], &builder ) );
+									  init = val.value( children[ 2 ] ).get();
+								  }
 
-							  if ( children.size() > 1 )  // decl with init
-							  {
-								  auto init = get<QualifiedValue>( codegen( children[ 2 ], &builder ) );
-								  Builder.CreateStore( init.value( children[ 2 ] ).get(), alloc );
+								  // deal with decl
+								  Value *alloc = nullptr;
+								  if ( declspec.has_attribute( SC_EXTERN ) || declspec.has_attribute( SC_STATIC ) )
+								  {
+									  auto cc = dyn_cast_or_null<Constant>( init );
+									  if ( init && !cc )
+									  {
+										  infoList->add_msg(
+											MSG_TYPE_ERROR,
+											fmt( "initializer element is not a compile-time constant" ),
+											children[ 2 ] );
+										  HALT();
+									  }
+									  alloc = new GlobalVariable(
+										*TheModule,
+										type->type, false,
+										declspec.has_attribute( SC_EXTERN ) ? GlobalValue::ExternalLinkage : GlobalValue::InternalLinkage,
+										cc );
+								  }
+								  else
+								  {
+									  if ( symTable.getLevel() == 0 )
+									  {
+										  auto cc = dyn_cast_or_null<Constant>( init );
+										  if ( init && !cc )
+										  {
+											  infoList->add_msg(
+												MSG_TYPE_ERROR,
+												fmt( "initializer element is not a compile-time constant" ),
+												children[ 2 ] );
+											  HALT();
+										  }
+										  alloc = new GlobalVariable(
+											*TheModule,
+											type->type, false,
+											GlobalValue::CommonLinkage,
+											cc );
+									  }
+									  else
+									  {
+										  alloc = Builder.CreateAlloca( type->type );
+										  if ( init )
+										  {
+											  Builder.CreateStore( init, alloc );
+										  }
+									  }
+								  }
+								  alloc->setName( name );
+								  symTable.insert( name, QualifiedValue( std::make_shared<QualifiedType>( type ),
+																		 alloc,
+																		 !type.is<mty::Address>() ) );
 							  }
 						  }
 					  }
@@ -257,29 +437,7 @@ int Declaration::reg()
 					  auto struct_ty = has_id ? std::make_shared<mty::Struct>( children[ 1 ][ 1 ].asString() ) : std::make_shared<mty::Struct>();
 
 					  {
-						  auto &roots = children[ has_id ? 3 : 2 ][ "children" ];
-
-						  std::vector<QualifiedDecl> decls;
-
-						  for ( int i = 0; i < roots.size(); ++i )
-						  {
-							  auto &node = roots[ i ];
-							  auto &children = node[ "children" ];
-
-							  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
-
-							  for ( int i = 1; i < children.size(); ++i )
-							  {
-								  auto &child = children[ i ];
-								  if ( child.isObject() )
-								  {
-									  auto builder = declspec.into_type_builder( children[ 0 ] );
-									  auto decl = get<QualifiedDecl>( codegen( children[ i ], &builder ) );
-									  decls.emplace_back( std::move( decl ) );
-								  }
-							  }
-						  }
-
+						  auto decls = get_structural_decl( children[ has_id ? 3 : 2 ] );
 						  struct_ty->setBody( decls, node );
 					  }
 
