@@ -15,6 +15,8 @@ endif()
 enable_language(Rust)
 include(CMakeCargo)
 
+set(LLVM_LIBRARIES LLVMSupport LLVMCore)
+
 find_package(LLVM REQUIRED CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -37,5 +39,7 @@ else()
     target_link_libraries(mcc fe-lib pthread dl)
 endif()
 
+llvm_map_components_to_libnames(llvm_libs support core)
+
 target_link_libraries(mcc ir-gen)
-target_link_libraries(mcc LLVMSupport LLVMCore)
+target_link_libraries(mcc ${llvm_libs})
