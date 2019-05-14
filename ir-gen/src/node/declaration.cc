@@ -114,35 +114,38 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 		}
 		if ( args.size() != 1 || !args[ 0 ].type.is<mty::Void>() )
 		{
-			int errs = 0;
+			int errs = 0, idx = 0;
 			for ( int j = 2; j < children.size() - 1; ++j )
 			{
 				auto &child = children[ j ];
-				auto &arg = args[ j - 2 ];
+				if ( child.isObject() )
+				{
+					auto &arg = args[ idx++ ];
 
-				if ( !arg.type->is_complete() )
-				{
-					infoList->add_msg(
-					  MSG_TYPE_ERROR,
-					  fmt( "variable of incomplete type `", arg.type, "` cannot be used as function parameter" ),
-					  child );
-					errs++;
-				}
-				else if ( !arg.type->is_valid_parameter_type() )
-				{
-					infoList->add_msg(
-					  MSG_TYPE_ERROR,
-					  fmt( "variable of type `", arg.type, "` cannot be used as function parameter" ),
-					  child );
-					errs++;
-				}
-				else if ( arg.type->is<mty::Function>() )
-				{
-					arg.type = DeclarationSpecifiers()
-								 .add_type( arg.type, child )
-								 .into_type_builder( child )
-								 .add_level( std::make_shared<mty::Pointer>( arg.type->type ) )
-								 .build();
+					if ( !arg.type->is_complete() )
+					{
+						infoList->add_msg(
+						  MSG_TYPE_ERROR,
+						  fmt( "variable of incomplete type `", arg.type, "` cannot be used as function parameter" ),
+						  child );
+						errs++;
+					}
+					else if ( !arg.type->is_valid_parameter_type() )
+					{
+						infoList->add_msg(
+						  MSG_TYPE_ERROR,
+						  fmt( "variable of type `", arg.type, "` cannot be used as function parameter" ),
+						  child );
+						errs++;
+					}
+					else if ( arg.type->is<mty::Function>() )
+					{
+						arg.type = DeclarationSpecifiers()
+									 .add_type( arg.type, child )
+									 .into_type_builder( child )
+									 .add_level( std::make_shared<mty::Pointer>( arg.type->type ) )
+									 .build();
+					}
 				}
 			}
 			if ( errs ) HALT();
@@ -254,7 +257,7 @@ int Declaration::reg()
 							  }
 							  else
 							  {
-								  symTable.insert( name, type );
+								  symTable.insert( name, type, children[ 0 ] );
 							  }
 						  }
 						  else
@@ -298,7 +301,7 @@ int Declaration::reg()
 										  static_cast<FunctionType *>( type.get()->type ),
 										  GlobalValue::ExternalLinkage, name, TheModule.get() ) );
 									  mty::Function::declare( fn_val, name );
-									  symTable.insert( name, QualifiedValue( ty, fn_val.second ) );
+									  symTable.insert( name, QualifiedValue( ty, fn_val.second ), children[ 0 ] );
 								  }
 								  else
 								  {
@@ -311,7 +314,7 @@ int Declaration::reg()
 											child );
 										  HALT();
 									  }
-									  symTable.insert( name, QualifiedValue( fn_val.first, fn_val.second ) );
+									  symTable.insert( name, QualifiedValue( fn_val.first, fn_val.second ), children[ 0 ] );
 								  }
 							  }
 							  else
@@ -379,9 +382,11 @@ int Declaration::reg()
 									  }
 								  }
 								  alloc->setName( name );
-								  symTable.insert( name, QualifiedValue( std::make_shared<QualifiedType>( type ),
-																		 alloc,
-																		 !type.is<mty::Address>() ) );
+								  symTable.insert(
+									name,
+									QualifiedValue(
+									  std::make_shared<QualifiedType>( type ), alloc, !type.is<mty::Address>() ),
+									children[ 0 ] );
 							  }
 						  }
 					  }
@@ -448,7 +453,7 @@ int Declaration::reg()
 						  auto name = children[ 1 ][ 1 ].asString();
 						  auto fullName = "struct." + name;
 
-						  symTable.insert( fullName, type );
+						  symTable.insert( fullName, type, children[ 1 ] );
 					  }
 
 					  return type;

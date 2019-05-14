@@ -9,7 +9,7 @@ struct Struct : Structural
 {
 	static constexpr auto self_type = TypeName::StructType;
 
-	std::map<std::string, QualifiedType> comps;
+	mutable std::map<std::string, std::pair<QualifiedType, ConstantInt *>> comps;
 	Option<std::string> name;
 
 	Struct() :
@@ -33,16 +33,39 @@ struct Struct : Structural
 			HALT();
 		}
 		static_cast<llvm::StructType *>( this->type )->setBody( map_comp( comps ) );
+		unsigned index = 0;
 		for ( auto &comp : comps )
 		{
 			if ( comp.name.is_some() )
 			{
-				this->comps.emplace( comp.name.unwrap(), comp.type );
+				auto ind = static_cast<ConstantInt *>(
+				  Constant::getIntegerValue(
+					TypeView::getIntTy( false )->type,
+					APInt( 32, index, false ) ) );
+				this->comps.emplace(
+				  comp.name.unwrap(),
+				  std::make_pair( comp.type, ind ) );
 			}
 			else
 			{
 				infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything" );
 			}
+		}
+	}
+
+	const std::pair<QualifiedType, ConstantInt *> &get_member( const std::string &member, Json::Value &ast ) const
+	{
+		if ( this->comps.find( member ) != this->comps.end() )
+		{
+			return this->comps.find( member )->second;
+		}
+		else
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "struct has no member named `", member, "`" ),
+			  ast );
+			HALT();
 		}
 	}
 
@@ -57,9 +80,14 @@ struct Struct : Structural
 			auto indent = decl_indent;
 			decl_indent += "  ";
 			os << " {\n";
+			std::vector<std::pair<const QualifiedType *, std::string>> __( this->comps.size() );
 			for ( auto &arg : this->comps )
 			{
-				os << decl_indent << arg.first << " : " << arg.second << ";\n";
+				__[ arg.second.second->getZExtValue() ] = std::make_pair( &arg.second.first, arg.first );
+			}
+			for ( auto &arg : __ )
+			{
+				os << decl_indent << arg.second << " : " << arg.first << ";\n";
 			}
 			decl_indent = indent;
 			os << decl_indent << "}";

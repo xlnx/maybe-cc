@@ -81,8 +81,55 @@ public:
 		}
 		return *this;
 	}
+	QualifiedValue &call( std::vector<QualifiedValue> &args, Json::Value &ast )
+	{
+		if ( is_lvalue )
+		{
+			INTERNAL_ERROR();
+		}
+
+		auto &children = ast[ "children" ];
+		while ( type->is<mty::Pointer>() )
+		{
+			deref( children[ 0 ] ).value( children[ 0 ] );
+		}
+		if ( auto fn = type->as<mty::Function>() )
+		{
+			if ( args.size() != fn->args.size() )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_ERROR,
+				  fmt( "too ", args.size() > fn->args.size() ? "many" : "few",
+					   " arguments to function call, exprected ", fn->args.size(),
+					   ", have ", args.size() ),
+				  ast );
+				HALT();
+			}
+			std::vector<Value *> args_val;
+			for ( auto i = 0; i != args.size(); ++i )
+			{
+				args_val.emplace_back(
+				  args[ i ].cast(
+							 TypeView( std::make_shared<QualifiedType>( fn->args[ i ].type ) ),
+							 children[ i + 2 ] )
+					.get() );
+			}
+			this->type.next();
+			this->val = Builder.CreateCall( this->val, args_val );
+		}
+		else
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "called object type `", type,
+				   "` is not a function or function pointer" ),
+			  children[ 0 ] );
+			HALT();
+		}
+		return *this;
+	}
 
 public:
 	static void cast_binary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool allow_float = true );
-	QualifiedValue &cast_into_storage( const TypeView &dst, Json::Value &node );
+	QualifiedValue &cast( const TypeView &dst, Json::Value &node );
 };

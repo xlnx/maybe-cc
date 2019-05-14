@@ -89,7 +89,7 @@ void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &oth
 	}
 }
 
-QualifiedValue &QualifiedValue::cast_into_storage( const TypeView &dst, Json::Value &node )
+QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 {
 	if ( this->is_lvalue )
 	{

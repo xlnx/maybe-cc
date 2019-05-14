@@ -66,7 +66,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
                 .multiple(false)
         ).get_matches_from(args.iter());
 
-    let ir_stuff = ("ir", ".ii");
+    let ir_stuff = ("ir", ".ll");
     let ast_stuff = ("ast", ".ast.json");
 
     let (target, suf) = match matches.value_of("target") {

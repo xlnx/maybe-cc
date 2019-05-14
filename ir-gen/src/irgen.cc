@@ -47,7 +47,11 @@ JumpTable<NodeHandler> handlers = {
 			  }
 		  }
 
-		  symTable.insert( name, QualifiedValue( std::make_shared<QualifiedType>( type ), fn, false ) );
+		  symTable.insert(
+			name,
+			QualifiedValue(
+			  std::make_shared<QualifiedType>( type ), fn, false ),
+			children[ 1 ] );
 
 		  currentFunction = fn;
 		  BasicBlock *BB = BasicBlock::Create( TheContext, "entry", fn );
@@ -55,6 +59,30 @@ JumpTable<NodeHandler> handlers = {
 		  Builder.SetInsertPoint( BB );
 
 		  symTable.push();
+
+		  auto fn_arg = fn->arg_begin();
+		  for ( auto &arg : fn_type->args )
+		  {
+			  if ( arg.name.is_none() )
+			  {
+				  infoList->add_msg(
+					MSG_TYPE_ERROR,
+					fmt( "function parameter name omitted" ),
+					children[ 1 ] );
+				  HALT();
+			  }
+			  auto &name = arg.name.unwrap();
+			  auto alloc = Builder.CreateAlloca( arg.type->type, 0, name );
+			  Builder.CreateStore( fn_arg, alloc );
+			  symTable.insert(
+				name,
+				QualifiedValue(
+				  std::make_shared<QualifiedType>( arg.type ),
+				  alloc,
+				  true ),
+				children[ 1 ] );
+			  ++fn_arg;
+		  }
 
 		  //To codegen block
 		  auto &basicBlock = children[ 2 ][ "children" ];

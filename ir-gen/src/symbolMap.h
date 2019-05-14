@@ -71,14 +71,28 @@ public:
 		return nullptr;
 	}
 
-	void insert( const std::string &str, const QualifiedType &type )
+	void insert( const std::string &str, const QualifiedType &type, Json::Value &node )
 	{
+		if ( findThisLevel( str ) != nullptr )
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "redefination of `", str, "`" ),
+			  node );
+		}
 		auto &smap = symbolStack.back();
 		smap.emplace( str, Symbol( type, getLevel() ) );
 	}
 
-	void insert( const std::string &str, const QualifiedValue &value )
+	void insert( const std::string &str, const QualifiedValue &value, Json::Value &node )
 	{
+		if ( findThisLevel( str ) != nullptr )
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "redefination of `", str, "`" ),
+			  node );
+		}
 		auto &smap = symbolStack.back();
 		smap.emplace( str, Symbol( value, getLevel() ) );
 	}
