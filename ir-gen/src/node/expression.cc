@@ -1,6 +1,6 @@
 #include "expression.h"
 
-QualifiedValue size_of_type( const mty::Qualified *type, Json::Value &ast )
+static QualifiedValue size_of_type( const mty::Qualified *type, Json::Value &ast )
 {
 	auto &value_type = TypeView::getLongTy( false );
 	if ( !type->is_complete() )
@@ -16,6 +16,74 @@ QualifiedValue size_of_type( const mty::Qualified *type, Json::Value &ast )
 	  value_type,
 	  Constant::getIntegerValue(
 		value_type->type, APInt( value_type->as<mty::Integer>()->bits, uint64_t( bits / 8 ), false ) ) );
+}
+
+static QualifiedValue add( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast )
+{
+	if ( lhs.get_type()->is<mty::Derefable>() && rhs.get_type()->is<mty::Integer>() )
+	{
+		return lhs.offset( rhs.get(), ast[ "children" ][ 0 ] );
+	}
+	else if ( lhs.get_type()->is<mty::Integer>() && rhs.get_type()->is<mty::Derefable>() )
+	{
+		return rhs.offset( lhs.get(), ast[ "children" ][ 2 ] );
+	}
+	else
+	{
+		QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+		auto &type = lhs.get_type();
+		if ( auto itype = type->as<mty::Integer>() )
+		{
+			return QualifiedValue( type, Builder.CreateAdd( lhs.get(), rhs.get() ) );
+		}
+		else
+		{
+			return QualifiedValue( type, Builder.CreateFAdd( lhs.get(), rhs.get() ) );
+		}
+	}
+}
+
+static QualifiedValue sub( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast )
+{
+	TODO( "pointer arithmetic not implemented" );
+	QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+	auto &type = lhs.get_type();
+	if ( auto itype = type->as<mty::Integer>() )
+	{
+		return QualifiedValue( type, Builder.CreateSub( lhs.get(), rhs.get() ) );
+	}
+	else
+	{
+		return QualifiedValue( type, Builder.CreateFSub( lhs.get(), rhs.get() ) );
+	}
+}
+
+static QualifiedValue get_member( QualifiedValue &obj, Json::Value &ast )
+{
+	auto &children = ast[ "children" ];
+	auto member = children[ 2 ][ 1 ].asString();
+	if ( !obj.get_type()->is<mty::Structural>() )
+	{
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "member reference base type `", obj.get_type(), "` is not a structure or union" ),
+		  children[ 0 ] );
+		HALT();
+	}
+	if ( auto struct_obj = obj.get_type()->as<mty::Struct>() )
+	{
+		auto &mem = struct_obj->get_member( member, children[ 2 ] );
+		static const auto zero = ConstantInt::get( TheContext, APInt( 64, 0, true ) );
+		static Value *idx[ 2 ] = { zero, nullptr };
+		idx[ 1 ] = mem.second;
+		return QualifiedValue(
+		  TypeView( std::make_shared<QualifiedType>( mem.first ) ),
+		  Builder.CreateGEP( obj.get(), idx ), true );
+	}
+	else
+	{
+		UNIMPLEMENTED();
+	}
 }
 
 static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
@@ -78,40 +146,10 @@ static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 		 } },
 
 		{ "+", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-			 if ( lhs.get_type()->is<mty::Derefable>() && rhs.get_type()->is<mty::Integer>() )
-			 {
-				 return lhs.offset( rhs.get(), ast[ "children" ][ 0 ] );
-			 }
-			 else if ( lhs.get_type()->is<mty::Integer>() && rhs.get_type()->is<mty::Derefable>() )
-			 {
-				 return rhs.offset( lhs.get(), ast[ "children" ][ 2 ] );
-			 }
-			 else
-			 {
-				 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-				 auto &type = lhs.get_type();
-				 if ( auto itype = type->as<mty::Integer>() )
-				 {
-					 return QualifiedValue( type, Builder.CreateAdd( lhs.get(), rhs.get() ) );
-				 }
-				 else
-				 {
-					 return QualifiedValue( type, Builder.CreateFAdd( lhs.get(), rhs.get() ) );
-				 }
-			 }
+			 return add( lhs, rhs, ast );
 		 } },
 		{ "-", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-			 TODO( "pointer arithmetic not implemented" );
-			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-			 auto &type = lhs.get_type();
-			 if ( auto itype = type->as<mty::Integer>() )
-			 {
-				 return QualifiedValue( type, Builder.CreateSub( lhs.get(), rhs.get() ) );
-			 }
-			 else
-			 {
-				 return QualifiedValue( type, Builder.CreateFSub( lhs.get(), rhs.get() ) );
-			 }
+			 return sub( lhs, rhs, ast );
 		 } },
 
 		{ "<<", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
@@ -289,9 +327,15 @@ int Expression::reg()
 
 			  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) )
 						   .value( children[ 2 ] )
-						   .cast_into_storage( type, children[ 2 ] );
+						   .cast( type, children[ 2 ] );
 
 			  return QualifiedValue( lhs.get_type(), Builder.CreateStore( rhs.get(), lhs.get() ) );
+		  } ) },
+		{ "cast_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
+			  auto &children = node[ "children" ];
+			  auto type = std::make_shared<QualifiedType>( get<QualifiedType>( codegen( children[ 1 ] ) ) );
+			  auto val = get<QualifiedValue>( codegen( children[ 3 ] ) ).value( children[ 3 ] );
+			  return val.cast( TypeView( type ), children[ 3 ] );
 		  } ) },
 		{ "unary_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
 			  auto &children = node[ "children" ];
@@ -308,6 +352,20 @@ int Expression::reg()
 					  { "&", []( Json::Value &children, QualifiedValue &val, Json::Value &ast ) -> QualifiedValue {
 						   UNIMPLEMENTED();
 						   //    return val.value( children[ 1 ] ).deref( ast );
+					   } },
+					  { "++", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+						   auto &int_ty = TypeView::getIntTy( true );
+						   auto rhs = QualifiedValue(
+							 int_ty,
+							 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
+						   return add( val.value( children[ 1 ] ), rhs, node );
+					   } },
+					  { "--", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+						   auto &int_ty = TypeView::getIntTy( true );
+						   auto rhs = QualifiedValue(
+							 int_ty,
+							 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
+						   return sub( val.value( children[ 1 ] ), rhs, node );
 					   } },
 					  { "sizeof", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 						   return size_of_type( val.get_type().get(), children[ 1 ] );
@@ -342,9 +400,49 @@ int Expression::reg()
 					   return val.value( children[ 0 ] ).offset( off.value( children[ 2 ] ).get(), node );
 				   } },
 				  { "++", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
-					   UNIMPLEMENTED();
-					   //    auto off = get<QualifiedValue>( codegen( children[ 2 ] ) );
-					   //    return val.value( children[ 0 ] ).offset( off.value( children[ 2 ] ).get(), node );
+					   auto prev = val;
+					   auto &int_ty = TypeView::getIntTy( true );
+					   auto rhs = QualifiedValue(
+						 int_ty,
+						 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
+					   add( prev, rhs, node );
+					   return prev;
+				   } },
+				  { "--", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+					   auto prev = val;
+					   auto &int_ty = TypeView::getIntTy( true );
+					   auto rhs = QualifiedValue(
+						 int_ty,
+						 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
+					   sub( prev, rhs, node );
+					   return prev;
+				   } },
+				  { "->", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+					   if ( auto struct_ty = val.get_type()->as<mty::Derefable>() )
+					   {
+						   return get_member( val.value( children[ 1 ] ).deref( children[ 1 ] ), node );
+					   }
+					   else
+					   {
+						   infoList->add_msg(
+							 MSG_TYPE_ERROR,
+							 fmt( "member reference type `", val.get_type(), "` is not a pointer" ),
+							 node );
+						   HALT();
+					   }
+				   } },
+				  { ".", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+					   return get_member( val, node );
+				   } },
+				  { "(", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+					   std::vector<QualifiedValue> args;
+					   for ( auto i = 2; i < children.size() - 1; ++i )
+					   {
+						   args.emplace_back(
+							 get<QualifiedValue>( codegen( children[ i ] ) )
+							   .value( children[ i ] ) );
+					   }
+					   return val.call( args, node );
 				   } }
 			  };
 
@@ -354,7 +452,7 @@ int Expression::reg()
 			  }
 			  else
 			  {
-				  UNIMPLEMENTED();
+				  INTERNAL_ERROR();
 			  }
 		  } ) },
 		{ "primary_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
@@ -437,8 +535,7 @@ int Expression::reg()
 				  }
 				  else
 				  {
-					  UNIMPLEMENTED();
-					  //   INTERNAL_ERROR();
+					  INTERNAL_ERROR();
 				  }
 			  }
 		  } ) },

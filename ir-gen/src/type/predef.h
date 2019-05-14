@@ -74,6 +74,16 @@ struct Qualified
 		return true;
 	}
 
+	bool is_valid_element_type() const
+	{
+		return this->is_complete() && !type->isVoidTy() && !type->isFunctionTy();
+	}
+
+	bool is_valid_parameter_type() const
+	{
+		return this->is_complete() && !type->isVoidTy();
+	}
+
 	bool is_allocable() const
 	{
 		return this->is_complete() && !type->isVoidTy();
@@ -102,6 +112,12 @@ public:
 };
 
 class Arithmetic : public Qualified
+{
+public:
+	using Qualified::Qualified;
+};
+
+class Structural : public Qualified
 {
 public:
 	using Qualified::Qualified;

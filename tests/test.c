@@ -1,5 +1,11 @@
+#include <stdio.h>
+
+extern void fn( int in, int *out );
+
 int main()
 {
-	int p, a, b[ 10 ];
-	a *p;
+	int in, out;
+	in = 128;
+	fn( in, &out );
+	printf( "%d\n", *out );
 }
