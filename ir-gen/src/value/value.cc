@@ -219,6 +219,19 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 			HALT();
 		}
 	}
+	else if ( dst->is<mty::Void>() )
+	{
+		this->type = dst;
+		this->val = nullptr;
+	}
+	else if ( dst->is<mty::Function>() )
+	{
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "used type `", dst, "` where arithmetic or pointer type is required" ),
+		  node );
+		HALT();
+	}
 	else
 	{
 		INTERNAL_ERROR();

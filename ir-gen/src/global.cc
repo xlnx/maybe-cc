@@ -4,7 +4,8 @@
 LLVMContext TheContext;
 IRBuilder<> Builder( TheContext );
 std::unique_ptr<Module> TheModule;
-Function *currentFunction;
+std::shared_ptr<QualifiedValue> currentFunction;
+std::string funcName;
 BasicBlock *currentBB;
 MsgList *infoList;
 SymbolTable symTable = SymbolTable();

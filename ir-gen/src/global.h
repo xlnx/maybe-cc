@@ -6,7 +6,8 @@
 extern LLVMContext TheContext;
 extern IRBuilder<> Builder;
 extern std::unique_ptr<Module> TheModule;
-extern Function *currentFunction;
+extern std::shared_ptr<QualifiedValue> currentFunction;
+extern std::string funcName;
 extern BasicBlock *currentBB;
 extern ffi::MsgList *infoList;
 extern SymbolTable symTable;
