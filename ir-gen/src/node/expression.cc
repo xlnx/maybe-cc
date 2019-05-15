@@ -15,7 +15,7 @@ static QualifiedValue size_of_type( const mty::Qualified *type, Json::Value &ast
 	return QualifiedValue(
 	  value_type,
 	  Constant::getIntegerValue(
-		value_type->type, APInt( value_type->as<mty::Integer>()->bits, bits / 8, false ) ) );
+		value_type->type, APInt( value_type->as<mty::Integer>()->bits, uint64_t( bits / 8 ), false ) ) );
 }
 
 static QualifiedValue add( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast )

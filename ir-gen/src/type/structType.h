@@ -41,7 +41,7 @@ struct Struct : Structural
 				auto ind = static_cast<ConstantInt *>(
 				  Constant::getIntegerValue(
 					TypeView::getIntTy( false )->type,
-					APInt( 32, index, false ) ) );
+					APInt( 32, uint64_t(index), false ) ) );
 				this->comps.emplace(
 				  comp.name.unwrap(),
 				  std::make_pair( comp.type, ind ) );
