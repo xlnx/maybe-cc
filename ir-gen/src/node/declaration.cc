@@ -411,7 +411,6 @@ int Declaration::reg()
 		{ "declaration_specifiers_p", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
 			  return handle_decl( node );
 		  } ) },
-		/* UNIMPLEMENTED -> QualifiedType */
 		{ "struct_or_union_specifier", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
 			  auto &children = node[ "children" ];
 
@@ -443,7 +442,7 @@ int Declaration::reg()
 
 					  {
 						  auto decls = get_structural_decl( children[ has_id ? 3 : 2 ] );
-						  struct_ty->setBody( decls, node );
+						  struct_ty->set_body( decls, node );
 					  }
 
 					  auto type = QualifiedType( struct_ty );
@@ -504,7 +503,6 @@ int Declaration::reg()
 				  INTERNAL_ERROR( "symbol `", name, "` not found in current scope" );
 			  }
 		  } ) },
-		/* UNIMPLEMENTED -> QualifiedDecl */
 		{ "struct_declarator", pack_fn<QualifiedTypeBuilder *, QualifiedDecl>( []( Json::Value &node, QualifiedTypeBuilder *const &builder ) -> QualifiedDecl {
 			  auto &children = node[ "children" ];
 			  if ( children.size() > 1 )

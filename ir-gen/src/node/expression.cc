@@ -82,7 +82,7 @@ static QualifiedValue get_member( QualifiedValue &obj, Json::Value &ast )
 	}
 	else
 	{
-		UNIMPLEMENTED();
+		UNIMPLEMENTED( "union" );
 	}
 }
 

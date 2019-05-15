@@ -147,7 +147,14 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 	}
 	else if ( dst->is<mty::Struct>() )
 	{
-		UNIMPLEMENTED();
+		if ( !dst.is_same_discard_qualifiers( this->type ) )
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "casting to `", dst, "` from incompatible type `", this->type, "`" ),
+			  node );
+			HALT();
+		}
 	}
 	else if ( dst->is<mty::Pointer>() )
 	{
@@ -165,14 +172,14 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 				{
 					infoList->add_msg(
 					  MSG_TYPE_WARNING,
-					  fmt( "incompatible pointer types assigning to `", dst, "` from `", this->type, "`" ),
+					  fmt( "incompatible pointer types casting to `", dst, "` from `", this->type, "`" ),
 					  node );
 				}
 				else if ( !dest.is_qualifiers_compatible( type ) )
 				{
 					infoList->add_msg(
 					  MSG_TYPE_WARNING,
-					  fmt( "assigning to `", dst, "` from `", this->type, "` discards qualifiers" ),
+					  fmt( "casting to `", dst, "` from `", this->type, "` discards qualifiers" ),
 					  node );
 				}
 			}
@@ -183,7 +190,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 				{
 					infoList->add_msg(
 					  MSG_TYPE_WARNING,
-					  fmt( "assigning to `", dst, "` from `", this->type, "` discards qualifiers" ),
+					  fmt( "casting to `", dst, "` from `", this->type, "` discards qualifiers" ),
 					  node );
 				}
 				if ( !dest->is<mty::Void>() )
@@ -206,7 +213,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 		{
 			infoList->add_msg(
 			  MSG_TYPE_WARNING,
-			  fmt( "incompatible integer to pointer conversion assigning to `", dst, "` from `", this->type, "`" ),
+			  fmt( "incompatible integer to pointer conversion casting to `", dst, "` from `", this->type, "`" ),
 			  node );
 			this->val = Builder.CreateIntToPtr( this->val, dst->type );
 		}
@@ -214,7 +221,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 		{
 			infoList->add_msg(
 			  MSG_TYPE_ERROR,
-			  fmt( "assigning to `", dst, "` from incompatible type `", this->type, "`" ),
+			  fmt( "casting to `", dst, "` from incompatible type `", this->type, "`" ),
 			  node );
 			HALT();
 		}
