@@ -76,8 +76,16 @@ static QualifiedValue get_member( QualifiedValue &obj, Json::Value &ast )
 		static const auto zero = ConstantInt::get( TheContext, APInt( 64, 0, true ) );
 		static Value *idx[ 2 ] = { zero, nullptr };
 		idx[ 1 ] = mem.second;
+		auto builder = DeclarationSpecifiers()
+						 .add_type( mem.first, ast );
+		if ( obj.get_type()->is_const ) builder.add_attribute( "const", ast );
+		if ( obj.get_type()->is_volatile ) builder.add_attribute( "volatile", ast );
+
 		return QualifiedValue(
-		  TypeView( std::make_shared<QualifiedType>( mem.first ) ),
+		  TypeView( std::make_shared<QualifiedType>(
+			builder
+			  .into_type_builder( ast )
+			  .build() ) ),
 		  Builder.CreateGEP( obj.get(), idx ), true );
 	}
 	else
