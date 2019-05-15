@@ -25,7 +25,7 @@ struct Struct : Structural
 		this->name = name;
 	}
 
-	void setBody( const std::vector<QualifiedDecl> &comps, Json::Value &ast )
+	void set_body( const std::vector<QualifiedDecl> &comps, Json::Value &ast )
 	{
 		if ( !static_cast<llvm::StructType *>( this->type )->isOpaque() )
 		{
@@ -75,23 +75,23 @@ struct Struct : Structural
 		if ( is_volatile ) os << "volatile ";
 		os << "struct";
 		if ( this->name.is_some() ) os << " " << this->name.unwrap();
-		if ( !static_cast<llvm::StructType *>( this->type )->isOpaque() )
-		{
-			auto indent = decl_indent;
-			decl_indent += "  ";
-			os << " {\n";
-			std::vector<std::pair<const QualifiedType *, std::string>> __( this->comps.size() );
-			for ( auto &arg : this->comps )
-			{
-				__[ arg.second.second->getZExtValue() ] = std::make_pair( &arg.second.first, arg.first );
-			}
-			for ( auto &arg : __ )
-			{
-				os << decl_indent << arg.second << " : " << arg.first << ";\n";
-			}
-			decl_indent = indent;
-			os << decl_indent << "}";
-		}
+		// if ( !static_cast<llvm::StructType *>( this->type )->isOpaque() )
+		// {
+		// 	auto indent = decl_indent;
+		// 	decl_indent += "  ";
+		// 	os << " {\n";
+		// 	std::vector<std::pair<const QualifiedType *, std::string>> __( this->comps.size() );
+		// 	for ( auto &arg : this->comps )
+		// 	{
+		// 		__[ arg.second.second->getZExtValue() ] = std::make_pair( &arg.second.first, arg.first );
+		// 	}
+		// 	for ( auto &arg : __ )
+		// 	{
+		// 		os << decl_indent << arg.second << " : " << *arg.first << ";\n";
+		// 	}
+		// 	decl_indent = indent;
+		// 	os << decl_indent << "}";
+		// }
 		if ( st.size() != ++id )
 		{
 			st[ id ]->print( os, st, id );
@@ -107,8 +107,9 @@ public:
 	bool impl_is_same_without_cv( const Qualified &other ) const override
 	{
 		auto &ref = static_cast<Struct const &>( other );
-		return this->name.is_some() && ref.name.is_some() &&
-			   this->name.unwrap() == ref.name.unwrap();
+		return this->type == ref.type;
+		// return this->name.is_some() && ref.name.is_some() &&
+		// 	   this->name.unwrap() == ref.name.unwrap();
 	}
 
 private:

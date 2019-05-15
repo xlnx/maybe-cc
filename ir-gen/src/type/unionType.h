@@ -25,7 +25,7 @@ struct Union : Structural
 		this->name = name;
 	}
 
-	void setBody( const std::vector<QualifiedDecl> &comps, Json::Value &ast )
+	void set_body( const std::vector<QualifiedDecl> &comps, Json::Value &ast )
 	{
 		if ( !static_cast<llvm::StructType *>( this->type )->isOpaque() )
 		{
