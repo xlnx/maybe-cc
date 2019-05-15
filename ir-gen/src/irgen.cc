@@ -86,6 +86,10 @@ JumpTable<NodeHandler> handlers = {
 			  ++fn_arg;
 		  }
 
+		  auto ret_ty = TypeView( std::make_shared<QualifiedType>( type ) ).next();
+		  auto retValue = Builder.CreateAlloca( ret_ty->type );
+		  auto retLoad = Builder.CreateLoad( retValue );
+		  retValue->setName( "retVal" );
 		  //To codegen block
 		  auto &basicBlock = children[ 2 ][ "children" ];
 		  for ( int i = 1; i < basicBlock.size() - 1; i++ )
@@ -93,17 +97,31 @@ JumpTable<NodeHandler> handlers = {
 			  codegen( basicBlock[ i ] );
 		  }
 
-		  auto ret_ty = TypeView( std::make_shared<QualifiedType>( type ) ).next();
-
 		  if ( name != "main" )
 		  {
-			  auto retValue = Builder.CreateAlloca( ret_ty->type );
-			  retValue->setName( "retVal" );
-			  Builder.CreateRet( Builder.CreateLoad( retValue ) );
+			  if ( !ret_ty->is<mty::Void>() )
+			  {
+				  Builder.CreateRet( retLoad );
+			  }
+			  else
+			  {
+				  Builder.CreateRet( nullptr );
+			  }
 		  }
 		  else
 		  {
-			  UNIMPLEMENTED();
+			  if ( ret_ty->is<mty::Integer>() )
+			  {
+				  Builder.CreateRet( Constant::getIntegerValue( ret_ty->type, APInt( 32, 0, false ) ) );
+			  }
+			  else if ( !ret_ty->is<mty::Void>() )
+			  {
+				  Builder.CreateRet( retLoad );
+			  }
+			  else
+			  {
+				  Builder.CreateRet( nullptr );
+			  }
 		  }
 
 		  verifyFunction( *fn );

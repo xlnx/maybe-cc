@@ -1,10 +1,13 @@
 #include <stdio.h>
 
-int st()
+float st()
 {
+	float y;
+	return y;
 }
 
 int main()
 {
 	int x;
+	return 1;
 }
