@@ -26,6 +26,7 @@ struct Integer : Arithmetic
 		if ( !is_signed ) os << "unsigned ";
 		switch ( bits )
 		{
+		case 1: os << "bool"; break;
 		case 8: os << "char"; break;
 		case 16: os << "short"; break;
 		case 32: os << "int"; break;

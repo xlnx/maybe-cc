@@ -179,7 +179,7 @@ static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 
 		{ "<", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-			 auto &type = lhs.get_type();
+			 auto &type = TypeView::getBoolTy();
 			 if ( auto itype = type->as<mty::Integer>() )
 			 {
 				 if ( itype->is_signed )
@@ -198,7 +198,7 @@ static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 		 } },
 		{ ">", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-			 auto &type = lhs.get_type();
+			 auto &type = TypeView::getBoolTy();
 			 if ( auto itype = type->as<mty::Integer>() )
 			 {
 				 if ( itype->is_signed )
@@ -217,7 +217,7 @@ static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 		 } },
 		{ "<=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-			 auto &type = lhs.get_type();
+			 auto &type = TypeView::getBoolTy();
 			 if ( auto itype = type->as<mty::Integer>() )
 			 {
 				 if ( itype->is_signed )
@@ -236,7 +236,7 @@ static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 		 } },
 		{ ">=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-			 auto &type = lhs.get_type();
+			 auto &type = TypeView::getBoolTy();
 			 if ( auto itype = type->as<mty::Integer>() )
 			 {
 				 if ( itype->is_signed )
@@ -256,7 +256,7 @@ static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 
 		{ "==", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-			 auto &type = lhs.get_type();
+			 auto &type = TypeView::getBoolTy();
 			 if ( auto itype = type->as<mty::Integer>() )
 			 {
 				 return QualifiedValue( type, Builder.CreateICmpEQ( lhs.get(), rhs.get() ) );
@@ -268,7 +268,7 @@ static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
 		 } },
 		{ "!=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 			 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-			 auto &type = lhs.get_type();
+			 auto &type = TypeView::getBoolTy();
 			 if ( auto itype = type->as<mty::Integer>() )
 			 {
 				 return QualifiedValue( type, Builder.CreateICmpNE( lhs.get(), rhs.get() ) );
