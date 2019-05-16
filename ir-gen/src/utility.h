@@ -131,3 +131,23 @@ using JumpTable = std::map<const char *, std::function<T>, __impl::str_cmp_op>;
 
 template <typename T>
 using LookupTable = std::map<const char *, T, __impl::str_cmp_op>;
+
+inline bool curr_bb_has_ret()
+{
+	extern llvm::IRBuilder<> Builder;
+
+	auto bb = Builder.GetInsertBlock();
+	if ( !bb->empty() )
+	{
+		auto inst = &bb->back();
+		if ( llvm::dyn_cast_or_null<llvm::ReturnInst>( inst ) ||
+			 ( [=] {
+				 auto br_inst = llvm::dyn_cast_or_null<llvm::BranchInst>( inst );
+				 return br_inst && !br_inst->isConditional();
+			 } )() )
+		{
+			return true;
+		}
+	}
+	return false;
+}

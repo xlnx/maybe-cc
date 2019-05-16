@@ -11,6 +11,7 @@ int Statement::reg()
 			  // Ignore the { and }
 			  for ( int i = 1; i < children.size() - 1; i++ )
 			  {
+				  if ( curr_bb_has_ret() ) break;
 				  codegen( children[ i ] );
 			  }
 
@@ -24,38 +25,130 @@ int Statement::reg()
 
 			  if ( children.size() > 1 )  // expr ;
 			  {
-				  return get<QUalifiedValue>( codegen( children[ 0 ] ) );
+				  return get<QualifiedValue>( codegen( children[ 0 ] ) );
 			  }
 
-			  return NoneOpt{};
+			  return Option<QualifiedValue>();
 		  } ) },
 		{ "iteration_statement", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
 			  auto &children = node[ "children" ];
 			  auto typeIter = children[ 0 ][ 1 ].asCString();
 			  static JumpTable<VoidType( Json::Value & children, Json::Value & ast )> __ = {
 				  { "while", []( Json::Value &children, Json::Value &ast ) -> VoidType {
-					   UNIMPLEMENTED();
+					   auto func = currentFunction->get();
+					   auto loopEnd = BasicBlock::Create( TheContext, "while.end", static_cast<Function *>( func ) );
+					   auto loopBody = BasicBlock::Create( TheContext, "while.body", static_cast<Function *>( func ), loopEnd );
+					   auto loopCond = BasicBlock::Create( TheContext, "while.cond", static_cast<Function *>( func ), loopBody );
+
+					   Builder.CreateBr( loopCond );
+
+					   Builder.SetInsertPoint( loopCond );
+					   auto br = get<QualifiedValue>( codegen( children[ 2 ] ) )
+								   .value( children[ 2 ] )
+								   .cast( TypeView::getBoolTy(), children[ 2 ] );
+
+					   Builder.CreateCondBr( br.get(), loopBody, loopEnd );
+
+					   breakJump.emplace( loopEnd );
+					   continueJump.emplace( loopCond );
+
+					   Builder.SetInsertPoint( loopBody );
+					   codegen( children[ 4 ] );
+					   if ( !curr_bb_has_ret() )
+					   {
+						   Builder.CreateBr( loopCond );
+					   }
+
+					   continueJump.pop();
+					   breakJump.pop();
+
+					   Builder.SetInsertPoint( loopEnd );
+
+					   return VoidType();
 				   } },
 				  { "do", []( Json::Value &children, Json::Value &ast ) -> VoidType {
-					   UNIMPLEMENTED();
+					   auto func = currentFunction->get();
+					   auto loopEnd = BasicBlock::Create( TheContext, "do.end", static_cast<Function *>( func ) );
+					   auto loopBody = BasicBlock::Create( TheContext, "do.body", static_cast<Function *>( func ), loopEnd );
+					   auto loopCond = BasicBlock::Create( TheContext, "do.cond", static_cast<Function *>( func ), loopBody );
+
+					   Builder.CreateBr( loopCond );
+
+					   breakJump.emplace( loopEnd );
+					   continueJump.emplace( loopCond );
+
+					   Builder.SetInsertPoint( loopBody );
+					   codegen( children[ 1 ] );
+					   if ( !curr_bb_has_ret() )
+					   {
+						   Builder.CreateBr( loopCond );
+					   }
+
+					   continueJump.pop();
+					   breakJump.pop();
+
+					   Builder.SetInsertPoint( loopCond );
+					   auto br = get<QualifiedValue>( codegen( children[ 4 ] ) )
+								   .value( children[ 2 ] )
+								   .cast( TypeView::getBoolTy(), children[ 4 ] );
+					   Builder.CreateCondBr( br.get(), loopBody, loopEnd );
+
+					   Builder.SetInsertPoint( loopEnd );
+
+					   return VoidType();
 				   } },
 				  { "for", []( Json::Value &children, Json::Value &ast ) -> VoidType {
 					   auto func = currentFunction->get();
 					   auto loopEnd = BasicBlock::Create( TheContext, "for.end", static_cast<Function *>( func ) );
-					   auto loopBody = BasicBlock::Create( TheContext, "for.body", static_cast<Function *>( func ), loopEnd );
-					   auto loopInc = BasicBlock::Create( TheContext, "for.inc", static_cast<Function *>( func ), loopBody );
-					   auto loopCond = BasicBlock::Create( TheContext, "for.cond", static_cast<Function *>( func ), loopInc );
+					   auto loopInc = BasicBlock::Create( TheContext, "for.inc", static_cast<Function *>( func ), loopEnd );
+					   auto loopBody = BasicBlock::Create( TheContext, "for.body", static_cast<Function *>( func ), loopInc );
+					   auto loopCond = BasicBlock::Create( TheContext, "for.cond", static_cast<Function *>( func ), loopBody );
 
 					   codegen( children[ 2 ] );
-					   //    auto branch =
-					   Builder.SetInsertPoint( loopCond );
-					//    auto branch = get<QualifiedValue>( codegen( children[ 3 ] ) )
-					//    .value(children[3])
-					//    .cast(TypeView:;
-					   
+					   Builder.CreateBr( loopCond );
 
-					   //    Builder.CreateCondBr();
-					   UNIMPLEMENTED();
+					   Builder.SetInsertPoint( loopCond );
+					   auto br = get<Option<QualifiedValue>>( codegen( children[ 3 ] ) );
+					   if ( br.is_some() )
+					   {
+						   auto br_val = br.unwrap()
+										   .value( children[ 3 ] )
+										   .cast( TypeView::getBoolTy(), children[ 3 ] );
+
+						   Builder.CreateCondBr( br_val.get(), loopBody, loopEnd );
+					   }
+					   else
+					   {
+						   Builder.CreateBr( loopBody );
+					   }
+
+					   Builder.SetInsertPoint( loopInc );
+					   if ( children[ 4 ].isObject() )
+					   {
+						   codegen( children[ 4 ] );
+						   Builder.CreateBr( loopCond );
+					   }
+					   else
+					   {
+						   Builder.CreateBr( loopEnd );
+					   }
+
+					   breakJump.emplace( loopEnd );
+					   continueJump.emplace( loopInc );
+
+					   Builder.SetInsertPoint( loopBody );
+					   int index = children[ 4 ].isObject() ? 6 : 5;
+					   codegen( children[ index ] );
+					   if ( !curr_bb_has_ret() )
+					   {
+						   Builder.CreateBr( loopInc );
+					   }
+
+					   continueJump.pop();
+					   breakJump.pop();
+
+					   Builder.SetInsertPoint( loopEnd );
+
 					   return VoidType();
 				   } }
 			  };
@@ -74,41 +167,44 @@ int Statement::reg()
 
 			  static JumpTable<VoidType( Json::Value & children, Json::Value & ast )> __ = {
 				  { "return", []( Json::Value &children, Json::Value &ast ) -> VoidType {
-					   auto fn_res_ty = currentFunction->get_type();
-					   fn_res_ty.next();
-					   if ( children.size() == 3 )
+					   if ( !curr_bb_has_ret() )
 					   {
-						   if ( fn_res_ty->is<mty::Void>() )
+						   auto fn_res_ty = currentFunction->get_type();
+						   fn_res_ty.next();
+						   if ( children.size() == 3 )
 						   {
-							   infoList->add_msg(
-								 MSG_TYPE_ERROR,
-								 fmt( "void function `", funcName, "` should not return a value" ),
-								 children[ 1 ] );
-							   HALT();
+							   if ( fn_res_ty->is<mty::Void>() )
+							   {
+								   infoList->add_msg(
+									 MSG_TYPE_ERROR,
+									 fmt( "void function `", funcName, "` should not return a value" ),
+									 children[ 1 ] );
+								   HALT();
+							   }
+							   auto retValue = get<QualifiedValue>( codegen( children[ 1 ] ) )
+												 .value( children[ 1 ] )
+												 .cast( fn_res_ty, children[ 1 ] );
+							   Builder.CreateRet( retValue.get() );
 						   }
-						   auto retValue = get<QualifiedValue>( codegen( children[ 1 ] ) )
-											 .value( children[ 1 ] )
-											 .cast( fn_res_ty, children[ 1 ] );
-						   Builder.CreateRet( retValue.get() );
-					   }
-					   else if ( children.size() == 2 )
-					   {
-						   if ( fn_res_ty->is<mty::Void>() )
+						   else if ( children.size() == 2 )
 						   {
-							   Builder.CreateRet( nullptr );
+							   if ( fn_res_ty->is<mty::Void>() )
+							   {
+								   Builder.CreateRet( nullptr );
+							   }
+							   else
+							   {
+								   infoList->add_msg(
+									 MSG_TYPE_ERROR,
+									 fmt( "non-void function `", funcName, "` should return a value" ),
+									 ast );
+								   HALT();
+							   }
 						   }
 						   else
 						   {
-							   infoList->add_msg(
-								 MSG_TYPE_ERROR,
-								 fmt( "non-void function `", funcName, "` should return a value" ),
-								 ast );
-							   HALT();
+							   INTERNAL_ERROR();
 						   }
-					   }
-					   else
-					   {
-						   INTERNAL_ERROR();
 					   }
 
 					   return VoidType();
@@ -117,10 +213,33 @@ int Statement::reg()
 					   UNIMPLEMENTED();
 				   } },
 				  { "continue", []( Json::Value &children, Json::Value &ast ) -> VoidType {
-					   UNIMPLEMENTED();
+					   if ( continueJump.empty() )
+					   {
+						   infoList->add_msg(
+							 MSG_TYPE_ERROR,
+							 fmt( "`continue` statement not in loop statement" ),
+							 ast );
+						   HALT();
+					   }
+
+					   auto targetBB = continueJump.top();
+					   Builder.CreateBr( targetBB );
+
+					   return VoidType();
 				   } },
 				  { "break", []( Json::Value &children, Json::Value &ast ) -> VoidType {
-					   UNIMPLEMENTED();
+					   if ( breakJump.empty() )
+					   {
+						   infoList->add_msg(
+							 MSG_TYPE_ERROR,
+							 fmt( "`break` statement not in loop or switch statement" ),
+							 ast );
+						   HALT();
+					   }
+					   auto targetBB = breakJump.top();
+					   Builder.CreateBr( targetBB );
+
+					   return VoidType();
 				   } }
 			  };
 			  if ( __.find( typeRet ) != __.end() )

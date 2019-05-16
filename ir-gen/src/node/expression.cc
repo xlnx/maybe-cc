@@ -30,7 +30,7 @@ static QualifiedValue add( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value
 	}
 	else
 	{
-		QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+		QualifiedValue::cast_binary_expr( lhs.value( ast[ "children" ][ 0 ] ), rhs, ast );
 		auto &type = lhs.get_type();
 		if ( auto itype = type->as<mty::Integer>() )
 		{
@@ -46,7 +46,7 @@ static QualifiedValue add( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value
 static QualifiedValue sub( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast )
 {
 	TODO( "pointer arithmetic not implemented" );
-	QualifiedValue::cast_binary_expr( lhs, rhs, ast );
+	QualifiedValue::cast_binary_expr( lhs.value( ast[ "children" ][ 0 ] ), rhs, ast );
 	auto &type = lhs.get_type();
 	if ( auto itype = type->as<mty::Integer>() )
 	{
@@ -414,7 +414,7 @@ int Expression::reg()
 						 int_ty,
 						 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
 					   add( prev, rhs, node );
-					   return prev;
+					   return prev.value( children[ 0 ] );
 				   } },
 				  { "--", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 					   auto prev = val;
@@ -423,7 +423,7 @@ int Expression::reg()
 						 int_ty,
 						 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
 					   sub( prev, rhs, node );
-					   return prev;
+					   return prev.value( children[ 0 ] );
 				   } },
 				  { "->", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 					   if ( auto struct_ty = val.get_type()->as<mty::Derefable>() )

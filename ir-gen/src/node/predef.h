@@ -16,6 +16,7 @@ using AstType = variant<
   DeclarationSpecifiers,
   QualifiedDecl,
   QualifiedTypeBuilder *,
+  Option<QualifiedValue>,
   VoidType>;
 
 using ArgsType = variant<
