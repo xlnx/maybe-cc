@@ -64,12 +64,15 @@ int Statement::reg()
 								 MSG_TYPE_ERROR,
 								 fmt( "non-void function `", funcName, "` should return a value" ),
 								 ast );
+							   HALT();
 						   }
 					   }
 					   else
 					   {
 						   INTERNAL_ERROR();
 					   }
+
+					   return VoidType();
 				   } },
 				  { "goto", []( Json::Value &children, Json::Value &ast ) -> VoidType {
 					   UNIMPLEMENTED();

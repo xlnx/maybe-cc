@@ -33,15 +33,22 @@ struct Union : Structural
 			HALT();
 		}
 		static_cast<llvm::StructType *>( this->type )->setBody( map_comp( comps ) );
+		unsigned max_bit_size = 0;
+		Type *long_ty = nullptr;
 		for ( auto &comp : comps )
 		{
-			if ( comp.name.is_some() )
+			if ( auto bit_size = comp.type->type->getPrimitiveSizeInBits() )
 			{
-				this->comps.emplace( comp.name.unwrap(), comp.type );
+				if ( bit_size > max_bit_size )
+				{
+					max_bit_size = bit_size;
+					long_ty = comp.type->type;
+				}
 			}
-			else
+			if ( long_ty != nullptr )
 			{
-				infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything" );
+				UNIMPLEMENTED();
+				this->comps.emplace( "<@unnamed>", long_ty );
 			}
 		}
 	}

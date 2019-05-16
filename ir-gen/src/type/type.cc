@@ -1,6 +1,14 @@
 #include "type.h"
 #include "def.h"
 
+TypeView const &TypeView::getBoolTy()
+{
+	static auto s_ty = std::make_shared<QualifiedType>( std::make_shared<mty::Integer>( 1, true ) );
+
+	static auto s_v = TypeView( s_ty );
+
+	return s_v;
+}
 TypeView const &TypeView::getCharTy( bool is_signed )
 {
 	static auto s_ty = std::make_shared<QualifiedType>( std::make_shared<mty::Integer>( 8, true ) );
