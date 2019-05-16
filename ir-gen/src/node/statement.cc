@@ -19,15 +19,54 @@ int Statement::reg()
 
 			  return VoidType();
 		  } ) },
-		{ "expression_statement", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
+		{ "expression_statement", pack_fn<VoidType, Option<QualifiedValue>>( []( Json::Value &node, VoidType const & ) -> Option<QualifiedValue> {
 			  auto &children = node[ "children" ];
 
 			  if ( children.size() > 1 )  // expr ;
 			  {
-				  codegen( children[ 0 ] );
+				  return get<QUalifiedValue>( codegen( children[ 0 ] ) );
 			  }
 
-			  return VoidType();
+			  return NoneOpt{};
+		  } ) },
+		{ "iteration_statement", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
+			  auto &children = node[ "children" ];
+			  auto typeIter = children[ 0 ][ 1 ].asCString();
+			  static JumpTable<VoidType( Json::Value & children, Json::Value & ast )> __ = {
+				  { "while", []( Json::Value &children, Json::Value &ast ) -> VoidType {
+					   UNIMPLEMENTED();
+				   } },
+				  { "do", []( Json::Value &children, Json::Value &ast ) -> VoidType {
+					   UNIMPLEMENTED();
+				   } },
+				  { "for", []( Json::Value &children, Json::Value &ast ) -> VoidType {
+					   auto func = currentFunction->get();
+					   auto loopEnd = BasicBlock::Create( TheContext, "for.end", static_cast<Function *>( func ) );
+					   auto loopBody = BasicBlock::Create( TheContext, "for.body", static_cast<Function *>( func ), loopEnd );
+					   auto loopInc = BasicBlock::Create( TheContext, "for.inc", static_cast<Function *>( func ), loopBody );
+					   auto loopCond = BasicBlock::Create( TheContext, "for.cond", static_cast<Function *>( func ), loopInc );
+
+					   codegen( children[ 2 ] );
+					   //    auto branch =
+					   Builder.SetInsertPoint( loopCond );
+					//    auto branch = get<QualifiedValue>( codegen( children[ 3 ] ) )
+					//    .value(children[3])
+					//    .cast(TypeView:;
+					   
+
+					   //    Builder.CreateCondBr();
+					   UNIMPLEMENTED();
+					   return VoidType();
+				   } }
+			  };
+			  if ( __.find( typeIter ) != __.end() )
+			  {
+				  return __[ typeIter ]( children, node );
+			  }
+			  else
+			  {
+				  INTERNAL_ERROR();
+			  }
 		  } ) },
 		{ "jump_statement", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
 			  auto &children = node[ "children" ];

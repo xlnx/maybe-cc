@@ -57,7 +57,6 @@ JumpTable<NodeHandler> handlers = {
 		  currentFunction = std::make_shared<QualifiedValue>( func );
 		  funcName = name;
 		  BasicBlock *BB = BasicBlock::Create( TheContext, "entry", fn );
-		  currentBB = BB;
 		  Builder.SetInsertPoint( BB );
 
 		  symTable.push();
@@ -87,9 +86,15 @@ JumpTable<NodeHandler> handlers = {
 		  }
 
 		  auto ret_ty = TypeView( std::make_shared<QualifiedType>( type ) ).next();
-		  auto retValue = Builder.CreateAlloca( ret_ty->type );
-		  auto retLoad = Builder.CreateLoad( retValue );
-		  retValue->setName( "retVal" );
+		  AllocaInst *retValue;
+		  LoadInst *retLoad;
+		  if ( !ret_ty->is<mty::Void>() )
+		  {
+			  retValue = Builder.CreateAlloca( ret_ty->type );
+			  retLoad = Builder.CreateLoad( retValue );
+			  retValue->setName( "retVal" );
+		  }
+
 		  //To codegen block
 		  auto &basicBlock = children[ 2 ][ "children" ];
 		  for ( int i = 1; i < basicBlock.size() - 1; i++ )
