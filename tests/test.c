@@ -1,17 +1,10 @@
+#include <time.h>
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
+#include <assert.h>
+
 int main()
 {
-	int x;
-	int i;
-	for ( i = 0; i < 4; i++ )
-	{
-		do
-		{
-			while ( 1 )
-			{
-				int y;
-				y = 1;
-			}
-		} while ( x );
-	}
-	return 10;
+	return 100 * sin( 3.14 / 2 );
 }

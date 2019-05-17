@@ -111,7 +111,11 @@ std::string fmt( Args &&... args )
 template <typename... Args>
 void dbg( Args &&... args )
 {
-	std::cerr << fmt( std::forward<Args>( args )... ) << std::endl;
+    extern bool is_debug_mode;
+    if (is_debug_mode)
+    {
+	    std::cerr << fmt( std::forward<Args>( args )... ) << std::endl;
+    }
 }
 
 namespace __impl
@@ -150,4 +154,31 @@ inline bool curr_bb_has_ret()
 		}
 	}
 	return false;
+}
+
+inline bool secure_exec(const std::function<void()> &wrapped)
+{
+    using namespace ffi;
+    extern MsgList *infoList;
+	try
+	{
+		wrapped();
+		return true;
+	}
+	catch ( std::exception &e )
+	{
+		infoList->add_msg( MSG_TYPE_ERROR,
+						   std::string( "internal error: ir-gen crashed with exception: " ) + e.what() );
+		return false;
+	}
+	catch ( int )
+	{
+		return false;
+	}
+	catch ( ... )
+	{
+		infoList->add_msg( MSG_TYPE_ERROR,
+						   std::string( "internal error: ir-gen crashed with unknown error." ) );
+		return false;
+	}
 }

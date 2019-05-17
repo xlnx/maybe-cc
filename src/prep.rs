@@ -1,4 +1,5 @@
 use std::io::prelude::*;
+use std::process::{Command, Stdio};
 
 use myrpg::*;
 
@@ -34,8 +35,30 @@ impl Preprocessor {
     pub fn new() -> Self {
         Preprocessor {}
     }
-    pub fn parse(&self, text: &str, logger: &mut Logger) -> Result<String, ()> {
-        Ok(text.into())
-        // Err(PreprocessError::from())
+    pub fn parse(&self, in_file: &str, logger: &mut Logger) -> Result<String, ()> {
+        let child= Command::new("gcc")
+            .args(&[
+                "-E",
+                "-std=c89",
+                "-U__GNUC__",
+                "-U__GNUC_MINOR__",
+                "-U__GNUC_PATCHLEVEL__",
+                in_file
+            ])
+            .output()
+            .unwrap();
+
+        if child.status.success() {
+            Ok(String::from_utf8(child.stdout.to_vec()).unwrap())
+        } else {
+            logger.log(&LogItem{
+                level: Severity::Error,
+                location: None,
+                message: format!(
+                    "preprocessing error:\n{}",
+                    String::from_utf8(child.stderr.to_vec()).unwrap().trim())
+            });
+            Err(())
+        }
     }
 }

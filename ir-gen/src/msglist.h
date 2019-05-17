@@ -95,6 +95,14 @@ public:
 		}
 		new ( msgs + len++ ) Msg( std::forward<Args>( args )... );
 	}
+
+	void clear() {
+	    for ( auto i = 0; i < len; ++i )
+        {
+            msgs[ i ].~Msg();
+        }
+        len = 0;
+	}
 };
 
 }  // namespace ffi

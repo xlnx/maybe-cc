@@ -205,12 +205,10 @@ AstType codegen( Json::Value &node, const ArgsType &arg )
 	}
 }
 
-char *gen_llvm_ir_cxx( const char *ast_json, MsgList &list )
+char *gen_llvm_ir_cxx( const char *ast_json )
 {
 	Json::Reader reader;
 	Json::Value root;
-
-	infoList = &list;
 
 	TheModule = make_unique<Module>( "asd", TheContext );
 
@@ -237,7 +235,7 @@ char *gen_llvm_ir_cxx( const char *ast_json, MsgList &list )
 
 	std::string cxx_ir;
 	raw_string_ostream str_stream( cxx_ir );
-	TheModule->print( errs(), nullptr );
+//	TheModule->print( errs(), nullptr );
 	TheModule->print( str_stream, nullptr );
 	auto ir = new char[ cxx_ir.length() + 1 ];
 	memcpy( ir, cxx_ir.c_str(), cxx_ir.length() + 1 );
@@ -246,34 +244,17 @@ char *gen_llvm_ir_cxx( const char *ast_json, MsgList &list )
 }
 
 extern "C" {
-char *gen_llvm_ir( const char *ast_json, MsgList **msg )
+char *gen_llvm_ir( const char *ast_json )
 {
-	*msg = new MsgList();
-	try
-	{
-		return gen_llvm_ir_cxx( ast_json, **msg );
-	}
-	catch ( std::exception &e )
-	{
-		( *msg )->add_msg( MSG_TYPE_ERROR,
-						   std::string( "internal error: ir-gen crashed with exception: " ) + e.what() );
-		return nullptr;
-	}
-	catch ( int )
-	{
-		return nullptr;
-	}
-	catch ( ... )
-	{
-		( *msg )->add_msg( MSG_TYPE_ERROR,
-						   std::string( "internal error: ir-gen crashed with unknown error." ) );
-		return nullptr;
-	}
+    char *val = nullptr;
+    secure_exec([&]{
+        val = gen_llvm_ir_cxx( ast_json );
+    });
+    return val;
 }
 
-void free_llvm_ir( MsgList *msg, char *ir )
+void free_llvm_ir( char *ir )
 {
-	delete msg;
 	delete ir;
 }
 }

@@ -12,3 +12,4 @@ MsgList *infoList;
 SymbolTable symTable = SymbolTable();
 bool stack_trace = false;
 std::string decl_indent;
+bool is_debug_mode = false;

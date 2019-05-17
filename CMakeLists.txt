@@ -39,7 +39,43 @@ else()
     target_link_libraries(mcc fe-lib pthread dl)
 endif()
 
-llvm_map_components_to_libnames(llvm_libs support core)
+if (FALSE)
+llvm_map_components_to_libnames(llvm_libs
+    WebAssemblyAsmParser
+    SystemZAsmParser
+    SparcAsmParser
+    PowerPCAsmParser
+    MSP430AsmParser
+    MipsAsmParser
+    LanaiAsmParser
+    HexagonAsmParser
+    BPFAsmParser
+    AMDGPUAsmParser
+    AArch64AsmParser
+    X86AsmParser
+
+    WebAssemblyAsmPrinter
+    SystemZAsmPrinter
+    SparcAsmPrinter
+    PowerPCAsmPrinter
+    MSP430AsmPrinter
+    MipsAsmPrinter
+    LanaiAsmPrinter
+    # HexagonAsmPrinter
+    BPFAsmPrinter
+    AMDGPUAsmPrinter
+    AArch64AsmPrinter
+    X86AsmPrinter
+
+    AsmParser
+    vectorize
+    target
+    support
+    core
+)
+else ()
+set(llvm_libs LLVM-8)
+endif()
 
 target_link_libraries(mcc ir-gen)
 target_link_libraries(mcc ${llvm_libs})
