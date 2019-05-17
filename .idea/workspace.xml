@@ -5,22 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="8f6b31d6-2f12-4630-86e6-807ff1bf1b49" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/ir-gen/src/be.cc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ir-gen/src/be.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ir-gen/src/llirc.cc" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ir-gen/src/llirc.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/msg.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/global.cc" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/global.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/global.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/global.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ir-gen/src/irgen.cc" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/irgen.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/irgen.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/irgen.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/msglist.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/msglist.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/utility.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/utility.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/maybe.sh" beforeDir="false" afterPath="$PROJECT_DIR$/maybe.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ir.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ir.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/prep.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/prep.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/test.c" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test.c" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -34,11 +22,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/lib.rs">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="475">
-              <caret line="181" column="10" lean-forward="true" selection-start-line="181" selection-start-column="10" selection-end-line="181" selection-end-column="10" />
+            <state relative-caret-position="657">
+              <caret line="212" column="30" selection-start-line="212" selection-start-column="30" selection-end-line="212" selection-end-column="30" />
             </state>
           </provider>
         </entry>
@@ -46,8 +34,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/msg.rs">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="706">
-              <caret line="67" column="1" selection-start-line="67" selection-start-column="1" selection-end-line="67" selection-end-column="1" />
+            <state relative-caret-position="701">
+              <caret line="65" selection-start-line="65" selection-end-line="65" />
             </state>
           </provider>
         </entry>
@@ -61,29 +49,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/prep.rs">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="663">
-              <caret line="50" column="17" selection-start-line="50" selection-start-column="17" selection-end-line="50" selection-end-column="17" />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/ir.rs">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="572">
-              <caret line="26" column="27" selection-start-line="26" selection-start-column="27" selection-end-line="26" selection-end-column="27" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/ir-gen/src/irgen.cc">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="536">
-              <caret line="238" column="44" selection-start-line="238" selection-start-column="44" selection-end-line="238" selection-end-column="44" />
+            <state relative-caret-position="374">
+              <caret line="17" column="5" selection-start-line="17" selection-start-column="5" selection-end-line="17" selection-end-column="5" />
             </state>
           </provider>
         </entry>
@@ -91,8 +61,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/ir-gen/src/be.cc">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="462">
-              <caret line="21" column="4" selection-start-line="21" selection-start-column="4" selection-end-line="21" selection-end-column="31" />
+            <state relative-caret-position="572">
+              <caret line="26" column="1" selection-start-line="26" selection-start-column="1" selection-end-line="26" selection-end-column="1" />
             </state>
           </provider>
         </entry>
@@ -100,8 +70,35 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/ir-gen/src/llirc.cc">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="526">
-              <caret line="61" column="1" selection-start-line="61" selection-start-column="1" selection-end-line="61" selection-end-column="1" />
+            <state relative-caret-position="372">
+              <caret line="54" selection-start-line="54" selection-end-line="54" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ir-gen/src/irgen.cc">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="548">
+              <caret line="269" column="1" selection-start-line="269" selection-start-column="1" selection-end-line="269" selection-end-column="1" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ir-gen/src/value/value.h">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="637">
+              <caret line="78" column="20" selection-start-line="78" selection-start-column="16" selection-end-line="78" selection-end-column="20" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/ir-gen/src/utility.h">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="504">
+              <caret line="174" column="5" selection-start-line="174" selection-start-column="5" selection-end-line="174" selection-end-column="5" />
             </state>
           </provider>
         </entry>
@@ -117,13 +114,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>MsgList</find>
-      <find>extern</find>
-      <find>msg</find>
-      <find>msg_c</find>
-      <find>list</find>
-      <find>*msg</find>
-      <find>Context</find>
       <find>ToolOutputFile</find>
       <find>SMDiagnostic</find>
       <find>Err</find>
@@ -136,22 +126,30 @@
       <find>Parser</find>
       <find>target</find>
       <find>suf</find>
-      <find>error</find>
       <find>dbg</find>
-      <find>pass</find>
       <find>exe</find>
-      <find>ir_c</find>
       <find>logger</find>
       <find>input</find>
       <find>std::process::exit</find>
       <find>std::process</find>
       <find>obj_out</find>
       <find>default_out_file</find>
+      <find>gcc</find>
+      <find>throw</find>
+      <find>INTERNAL_ERROR</find>
+      <find>module_err</find>
+      <find>lvalue required for dereference</find>
+      <find>Builder</find>
+      <find>pass</find>
+      <find>ir_c</find>
+      <find>irc_val</find>
+      <find>error</find>
     </findStrings>
     <replaceStrings>
       <replace>Printer</replace>
-      <replace>IRCContext</replace>
       <replace>elf</replace>
+      <replace>IRCContext</replace>
+      <replace>fn_err</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -164,20 +162,21 @@
         <option value="$PROJECT_DIR$/ll-irc/src/llirc.cc" />
         <option value="$PROJECT_DIR$/ir-gen/src/irgen.h" />
         <option value="$PROJECT_DIR$/ir-gen/src/msglist.h" />
-        <option value="$PROJECT_DIR$/src/msg.rs" />
         <option value="$PROJECT_DIR$/CMakeLists.txt" />
         <option value="$PROJECT_DIR$/ir-gen/src/llirc.h" />
         <option value="$PROJECT_DIR$/ir-gen/src/llirc.cc" />
-        <option value="$PROJECT_DIR$/ir-gen/src/global.h" />
         <option value="$PROJECT_DIR$/ir-gen/src/global.cc" />
-        <option value="$PROJECT_DIR$/ir-gen/src/utility.h" />
-        <option value="$PROJECT_DIR$/ir-gen/src/be.cc" />
         <option value="$PROJECT_DIR$/ir-gen/src/be.h" />
-        <option value="$PROJECT_DIR$/src/ir.rs" />
-        <option value="$PROJECT_DIR$/ir-gen/src/irgen.cc" />
         <option value="$PROJECT_DIR$/ir-gen/src/node/statement.cc" />
-        <option value="$PROJECT_DIR$/src/lib.rs" />
         <option value="$PROJECT_DIR$/src/prep.rs" />
+        <option value="$PROJECT_DIR$/ir-gen/src/global.h" />
+        <option value="$PROJECT_DIR$/ir-gen/src/be.cc" />
+        <option value="$PROJECT_DIR$/src/ir.rs" />
+        <option value="$PROJECT_DIR$/ir-gen/src/macros.h" />
+        <option value="$PROJECT_DIR$/ir-gen/src/utility.h" />
+        <option value="$PROJECT_DIR$/ir-gen/src/irgen.cc" />
+        <option value="$PROJECT_DIR$/src/msg.rs" />
+        <option value="$PROJECT_DIR$/src/lib.rs" />
       </list>
     </option>
   </component>
@@ -193,7 +192,7 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="x" value="960" />
     <option name="y" value="27" />
     <option name="width" value="960" />
@@ -226,13 +225,6 @@
               <item name="maybe-cc" type="462c0819:PsiDirectoryNode" />
               <item name="ir-gen" type="462c0819:PsiDirectoryNode" />
               <item name="src" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="maybe-cc" type="b2602c69:ProjectViewProjectNode" />
-              <item name="maybe-cc" type="462c0819:PsiDirectoryNode" />
-              <item name="ir-gen" type="462c0819:PsiDirectoryNode" />
-              <item name="src" type="462c0819:PsiDirectoryNode" />
-              <item name="node" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="maybe-cc" type="b2602c69:ProjectViewProjectNode" />
@@ -279,10 +271,10 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="27" width="1920" height="1053" extended-state="7" />
+    <frame x="0" y="27" width="1920" height="1053" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2526596" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.18404256" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Image Layers" order="2" />
       <window_info id="Designer" order="3" />
@@ -374,24 +366,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/ir-gen/src/global.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="352">
-          <caret line="16" column="7" selection-start-line="16" selection-start-column="7" selection-end-line="16" selection-end-column="7" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/ir-gen/src/global.cc">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="330">
           <caret line="15" lean-forward="true" selection-start-line="15" selection-end-line="15" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ir-gen/src/utility.h">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="646">
-          <caret line="115" column="5" selection-start-line="115" selection-start-column="5" selection-end-line="115" selection-end-column="5" />
         </state>
       </provider>
     </entry>
@@ -416,59 +394,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/ir-gen/src/llirc.cc">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="526">
-          <caret line="61" column="1" selection-start-line="61" selection-start-column="1" selection-end-line="61" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ir-gen/src/be.cc">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="462">
-          <caret line="21" column="4" selection-start-line="21" selection-start-column="4" selection-end-line="21" selection-end-column="31" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/ir-gen/src/irgen.cc">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="536">
-          <caret line="238" column="44" selection-start-line="238" selection-start-column="44" selection-end-line="238" selection-end-column="44" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/ir.rs">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="572">
-          <caret line="26" column="27" selection-start-line="26" selection-start-column="27" selection-end-line="26" selection-end-column="27" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/../.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/src/liballoc/vec.rs">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="294">
           <caret line="1073" column="11" selection-start-line="1073" selection-start-column="11" selection-end-line="1073" selection-end-column="11" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/lib.rs">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="475">
-          <caret line="181" column="10" lean-forward="true" selection-start-line="181" selection-start-column="10" selection-end-line="181" selection-end-column="10" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/msg.rs">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="706">
-          <caret line="67" column="1" selection-start-line="67" selection-start-column="1" selection-end-line="67" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/CMakeLists.txt">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="751">
-          <caret line="81" selection-start-line="81" selection-end-line="81" />
         </state>
       </provider>
     </entry>
@@ -479,10 +408,94 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/myrpg/src/lalr_util/src/log.rs">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="294">
+          <caret line="35" column="11" selection-start-line="35" selection-start-column="11" selection-end-line="35" selection-end-column="11" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/src/prep.rs">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="663">
-          <caret line="50" column="17" selection-start-line="50" selection-start-column="17" selection-end-line="50" selection-end-column="17" />
+        <state relative-caret-position="684">
+          <caret line="54" column="39" selection-start-line="54" selection-start-column="39" selection-end-line="54" selection-end-column="39" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ir-gen/src/global.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="352">
+          <caret line="16" column="26" lean-forward="true" selection-start-line="16" selection-start-column="26" selection-end-line="16" selection-end-column="26" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ir-gen/src/macros.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <caret lean-forward="true" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ir-gen/src/utility.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="504">
+          <caret line="174" column="5" selection-start-line="174" selection-start-column="5" selection-end-line="174" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ir-gen/src/value/value.h">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="637">
+          <caret line="78" column="20" selection-start-line="78" selection-start-column="16" selection-end-line="78" selection-end-column="20" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ir-gen/src/irgen.cc">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="548">
+          <caret line="269" column="1" selection-start-line="269" selection-start-column="1" selection-end-line="269" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ir-gen/src/llirc.cc">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="372">
+          <caret line="54" selection-start-line="54" selection-end-line="54" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/ir-gen/src/be.cc">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="572">
+          <caret line="26" column="1" selection-start-line="26" selection-start-column="1" selection-end-line="26" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/ir.rs">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="374">
+          <caret line="17" column="5" selection-start-line="17" selection-start-column="5" selection-end-line="17" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/CMakeLists.txt">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="751">
+          <caret line="81" selection-start-line="81" selection-end-line="81" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/msg.rs">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="701">
+          <caret line="65" selection-start-line="65" selection-end-line="65" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/lib.rs">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="657">
+          <caret line="212" column="30" selection-start-line="212" selection-start-column="30" selection-end-line="212" selection-end-column="30" />
         </state>
       </provider>
     </entry>

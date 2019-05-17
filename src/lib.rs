@@ -208,7 +208,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
             .unwrap_or_else(error_exit!());
 
         if !msg.log(&contents, &mut logger) {
-            error_exit!();
+            error_exit!()(());
         }
         unsafe {
             clear_msg();
@@ -230,11 +230,8 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
         };
         objs.push(obj_out);
 
-        if !msg.log(&contents, &mut logger) {
-            error_exit!();
-        }
-        if irc_val != 0 {
-            error_exit!();
+        if !msg.log(&contents, &mut logger) || irc_val != 0 {
+            error_exit!()(());
         }
         unsafe {
             clear_msg();
@@ -272,7 +269,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
                 location: None,
                 message: errs.trim().into(),
             });
-            error_exit!();
+            error_exit!()(());
         }
     }
 

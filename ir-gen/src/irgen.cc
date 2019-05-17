@@ -132,7 +132,12 @@ JumpTable<NodeHandler> handlers = {
 			  }
 		  }
 
-		  verifyFunction( *fn );
+		  std::string fn_err;
+		  raw_string_ostream fn_err_stream(fn_err);
+		  if (verifyFunction(*fn, &fn_err_stream)) {
+			  fn_err_stream.flush();
+			  INTERNAL_ERROR(fmt("\nLLVM Verify Function Failed:\n", fn_err));
+		  }
 
 		  dbg( symTable );
 		  symTable.pop();
@@ -210,9 +215,18 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	Json::Reader reader;
 	Json::Value root;
 
+    // init
 	TheModule = make_unique<Module>( "asd", TheContext );
+	currentFunction = nullptr;
+	funcName = "";
+	while (!continueJump.empty()) continueJump.pop();
+	while (!breakJump.empty()) breakJump.pop();
 
-	if ( !reader.parse( ast_json, root ) ) return nullptr;
+    // finish
+	if ( !reader.parse( ast_json, root ) )
+	{
+	    INTERNAL_ERROR(fmt("jsoncpp failed to parse ast.json"));
+	}
 
 	symTable.push();
 
@@ -233,10 +247,18 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	dbg( symTable );
 	symTable.pop();
 
+	std::string module_err;
+	raw_string_ostream module_err_stream(module_err);
+	if (verifyModule(*TheModule, &module_err_stream)) {
+		module_err_stream.flush();
+		INTERNAL_ERROR(fmt("\nLLVM Verify Module Failed:\n", module_err));
+	}
+
 	std::string cxx_ir;
 	raw_string_ostream str_stream( cxx_ir );
 //	TheModule->print( errs(), nullptr );
 	TheModule->print( str_stream, nullptr );
+
 	auto ir = new char[ cxx_ir.length() + 1 ];
 	memcpy( ir, cxx_ir.c_str(), cxx_ir.length() + 1 );
 

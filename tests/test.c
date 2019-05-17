@@ -4,7 +4,9 @@
 #include <string.h>
 #include <assert.h>
 
+extern int f();
+
 int main()
 {
-	return 100 * sin( 3.14 / 2 );
+	return 10 * f() * sin( 3.14 / 2 );
 }

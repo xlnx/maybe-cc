@@ -18,7 +18,7 @@ pub fn ir_gen<T>(ast: &Ast<T>) -> Result<String, ()> {
     }
 
     let ir = String::from(if ir_c == std::ptr::null() {
-        panic!("internal-error: ir-gen output null")
+        "".into()
     } else {
         unsafe { CStr::from_ptr(ir_c).to_str().unwrap() }
     });
