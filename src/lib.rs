@@ -47,7 +47,7 @@ trait NextName {
 
 impl NextName for String {
     fn next_name(&mut self) -> &mut Self {
-//        self.clear();
+        //        self.clear();
         self.insert_str(0, "0");
         self
     }
@@ -131,7 +131,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
         obj_stuff
     };
 
-    let in_files= if let Some(input) = matches.values_of_lossy("input") {
+    let in_files = if let Some(input) = matches.values_of_lossy("input") {
         input
     } else {
         println!("no input files");
@@ -148,11 +148,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
     let parser = LRParser::<C>::new();
     let msg;
     unsafe {
-        msg = init_be(if matches.is_present("dev") {
-            1
-        } else {
-            0
-        });
+        msg = init_be(if matches.is_present("dev") { 1 } else { 0 });
     }
     let msg = if msg == std::ptr::null() {
         &MsgList {
@@ -171,11 +167,11 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
         let mut default_out_file = format!("a{}", suf);
         default_out_file = format!(
             "{}{}",
-            &in_file.as_str()[
-                in_file.rfind('\\').or(in_file.rfind('/'))
-                    .map_or(0, |x| x + 1)
-                    ..
-                    in_file.rfind('.').unwrap_or(in_file.len())],
+            &in_file.as_str()[in_file
+                .rfind('\\')
+                .or(in_file.rfind('/'))
+                .map_or(0, |x| x + 1)
+                ..in_file.rfind('.').unwrap_or(in_file.len())],
             suf
         );
         let out_file = matches
@@ -184,9 +180,9 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
 
         let contents = String::from("\n")
             + preprocessor
-            .parse(in_file, &mut logger)
-            .unwrap_or_else(error_exit!())
-            .as_str()
+                .parse(in_file, &mut logger)
+                .unwrap_or_else(error_exit!())
+                .as_str()
             + "\n";
 
         /* parsing */
@@ -204,8 +200,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
         }
 
         /* ir-generation */
-        let ir = ir_gen(&ast)
-            .unwrap_or_else(error_exit!());
+        let ir = ir_gen(&ast).unwrap_or_else(error_exit!());
 
         if !msg.log(&contents, &mut logger) {
             error_exit!()(());
@@ -225,9 +220,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
         } else {
             String::from("/tmp/") + name.next_name().as_str() + ".o"
         };
-        let irc_val = unsafe {
-            irc_into_obj(CString::new(obj_out.as_str()).unwrap().as_ptr())
-        };
+        let irc_val = unsafe { irc_into_obj(CString::new(obj_out.as_str()).unwrap().as_ptr()) };
         objs.push(obj_out);
 
         if !msg.log(&contents, &mut logger) || irc_val != 0 {
@@ -239,27 +232,20 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
     }
 
     if target == "elf" {
-
-        let mut args: Vec<String> = vec![
-            "-o",
-            matches.value_of("output")
-                .unwrap_or("a.out")
-        ]
+        let mut args: Vec<String> = vec!["-o", matches.value_of("output").unwrap_or("a.out")]
             .into_iter()
             .map(|x| String::from(x))
             .collect();
         args.append(&mut objs);
-        let mut libs: Vec<String> = matches.values_of_lossy("link")
+        let mut libs: Vec<String> = matches
+            .values_of_lossy("link")
             .unwrap_or(vec![])
             .iter()
             .map(|x| String::from("-l") + x.as_str())
             .collect();
         args.append(&mut libs);
 
-        let child = Command::new("gcc")
-            .args(args.as_slice())
-            .output()
-            .unwrap();
+        let child = Command::new("gcc").args(args.as_slice()).output().unwrap();
 
         let errs = String::from_utf8(child.stderr.to_vec()).unwrap();
 

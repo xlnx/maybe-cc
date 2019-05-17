@@ -10,5 +10,6 @@
 #include "functionType.h"
 #include "arrayType.h"
 #include "structType.h"
+#include "unionType.h"
 
 #include "declarationSpecifier.h"

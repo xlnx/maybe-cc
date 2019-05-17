@@ -18,6 +18,72 @@ static QualifiedValue size_of_type( const mty::Qualified *type, Json::Value &ast
 		value_type->type, APInt( value_type->as<mty::Integer>()->bits, uint64_t( bits / 8 ), false ) ) );
 }
 
+static QualifiedValue pos( QualifiedValue &val, Json::Value &ast )
+{
+	if ( !val.is_rvalue() ) INTERNAL_ERROR();
+	auto &type = val.get_type();
+	if ( !type->is<mty::Arithmetic>() )
+	{
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "invalid argument type `", type, "` to unary expression" ),
+		  ast );
+		HALT();
+	}
+	return val;
+}
+
+static QualifiedValue neg( QualifiedValue &val, Json::Value &ast )
+{
+	if ( !val.is_rvalue() ) INTERNAL_ERROR();
+	auto &type = val.get_type();
+	if ( !type->is<mty::Arithmetic>() )
+	{
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "invalid argument type `", type, "` to unary expression" ),
+		  ast );
+		HALT();
+	}
+	return QualifiedValue( type, Builder.CreateNeg( val.get() ) );
+}
+
+static QualifiedValue flip( QualifiedValue &val, Json::Value &ast )
+{
+	if ( !val.is_rvalue() ) INTERNAL_ERROR();
+	auto &type = val.get_type();
+	if ( !type->is<mty::Integer>() )
+	{
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "invalid argument type `", type, "` to unary expression" ),
+		  ast );
+		HALT();
+	}
+	return QualifiedValue( type, Builder.CreateNot( val.get() ) );
+}
+
+static QualifiedValue logical_not( QualifiedValue &val, Json::Value &ast )
+{
+	if ( !val.is_rvalue() ) INTERNAL_ERROR();
+	auto &type = val.get_type();
+	if ( !type->is<mty::Arithmetic>() )
+	{
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "invalid argument type `", type, "` to unary expression" ),
+		  ast );
+		HALT();
+	}
+	return QualifiedValue(
+	  std::make_shared<QualifiedType>(
+		*TypeView::getBoolTy().get_ref_type() ),
+	  Builder.CreateNot(
+		val
+		  .cast( TypeView::getBoolTy(), ast )
+		  .get() ) );
+}
+
 static QualifiedValue add( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast )
 {
 	if ( lhs.get_type()->is<mty::Derefable>() && rhs.get_type()->is<mty::Integer>() )
@@ -45,21 +111,36 @@ static QualifiedValue add( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value
 
 static QualifiedValue sub( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast )
 {
-	TODO( "pointer arithmetic not implemented" );
-	QualifiedValue::cast_binary_expr( lhs.value( ast[ "children" ][ 0 ] ), rhs, ast );
-	auto &type = lhs.get_type();
-	if ( auto itype = type->as<mty::Integer>() )
+	if ( lhs.get_type()->is<mty::Derefable>() && rhs.get_type()->is<mty::Integer>() )
 	{
-		return QualifiedValue( type, Builder.CreateSub( lhs.get(), rhs.get() ) );
+		return lhs.offset( neg( rhs, ast ).get(), ast[ "children" ][ 0 ] );
+	}
+	else if ( lhs.get_type()->is<mty::Integer>() && rhs.get_type()->is<mty::Derefable>() )
+	{
+		return rhs.offset( neg( lhs, ast ).get(), ast[ "children" ][ 2 ] );
 	}
 	else
 	{
-		return QualifiedValue( type, Builder.CreateFSub( lhs.get(), rhs.get() ) );
+		QualifiedValue::cast_binary_expr( lhs.value( ast[ "children" ][ 0 ] ), rhs, ast );
+		auto &type = lhs.get_type();
+		if ( auto itype = type->as<mty::Integer>() )
+		{
+			return QualifiedValue( type, Builder.CreateSub( lhs.get(), rhs.get() ) );
+		}
+		else
+		{
+			return QualifiedValue( type, Builder.CreateFSub( lhs.get(), rhs.get() ) );
+		}
 	}
 }
 
 static QualifiedValue get_member( QualifiedValue &obj, Json::Value &ast )
 {
+	if ( obj.is_rvalue() )
+	{
+		UNIMPLEMENTED( "function returning a struct is not implemented yet" );
+	}
+
 	auto &children = ast[ "children" ];
 	auto member = children[ 2 ][ 1 ].asString();
 	if ( !obj.get_type()->is<mty::Structural>() )
@@ -88,9 +169,24 @@ static QualifiedValue get_member( QualifiedValue &obj, Json::Value &ast )
 			  .build() ) ),
 		  Builder.CreateGEP( obj.get(), idx ), true );
 	}
+	else if ( auto union_obj = obj.get_type()->as<mty::Union>() )
+	{
+		auto &mem = union_obj->get_member( member, children[ 2 ] );
+		auto builder = DeclarationSpecifiers()
+						 .add_type( mem, ast );
+		if ( obj.get_type()->is_const ) builder.add_attribute( "const", ast );
+		if ( obj.get_type()->is_volatile ) builder.add_attribute( "volatile", ast );
+
+		return QualifiedValue(
+		  TypeView( std::make_shared<QualifiedType>(
+			builder
+			  .into_type_builder( ast )
+			  .build() ) ),
+		  Builder.CreateBitCast( obj.get(), PointerType::getUnqual( mem->type ) ), true );
+	}
 	else
 	{
-		UNIMPLEMENTED( "union" );
+		INTERNAL_ERROR();
 	}
 }
 
@@ -361,6 +457,18 @@ int Expression::reg()
 						   UNIMPLEMENTED();
 						   //    return val.value( children[ 1 ] ).deref( ast );
 					   } },
+					  { "+", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+						   return pos( val.value( children[ 1 ] ), node );
+					   } },
+					  { "-", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+						   return neg( val.value( children[ 1 ] ), node );
+					   } },
+					  { "~", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+						   return flip( val.value( children[ 1 ] ), node );
+					   } },
+					  { "!", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
+						   return logical_not( val.value( children[ 1 ] ), node );
+					   } },
 					  { "++", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 						   auto &int_ty = TypeView::getIntTy( true );
 						   auto rhs = QualifiedValue(
@@ -446,9 +554,12 @@ int Expression::reg()
 					   std::vector<QualifiedValue> args;
 					   for ( auto i = 2; i < children.size() - 1; ++i )
 					   {
-						   args.emplace_back(
-							 get<QualifiedValue>( codegen( children[ i ] ) )
-							   .value( children[ i ] ) );
+						   if ( children[ i ].isObject() )
+						   {
+							   args.emplace_back(
+								 get<QualifiedValue>( codegen( children[ i ] ) )
+								   .value( children[ i ] ) );
+						   }
 					   }
 					   return val.call( args, node );
 				   } }
@@ -534,6 +645,23 @@ int Expression::reg()
 						   auto &type = is_double == 0 ? TypeView::getDoubleTy() : is_double == 1 ? TypeView::getLongDoubleTy() : TypeView::getFloatTy();
 
 						   return QualifiedValue( type, ConstantFP::get( type->type, num ) );
+					   } },
+					  { "STRING_LITERAL", []( const char *val, Json::Value &node ) -> QualifiedValue {
+						   std::string esc_str = val;
+						   esc_str = esc_str.substr( esc_str.find_first_of( '"' ) + 1, esc_str.length() - 2 );
+
+						   Json::Value dummy;
+						   auto builder = DeclarationSpecifiers()
+											.add_type( *TypeView::getCharTy( true ).get_ref_type(), dummy )
+											.into_type_builder( dummy );
+						   auto type = builder
+										 .add_level( std::make_shared<mty::Array>(
+										   builder.get_type()->type, esc_str.length() + 1 ) )
+										 .build();
+						   return QualifiedValue(
+							 std::make_shared<QualifiedType>( type ),
+							 Builder.CreateGlobalStringPtr( esc_str ),
+							 false );
 					   } }
 				  };
 

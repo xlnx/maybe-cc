@@ -3,9 +3,17 @@ use myrpg::*;
 use ref_thread_local::RefThreadLocal;
 use regex::Regex;
 use std::collections::HashSet;
+use std::iter::FromIterator;
 
 ref_thread_local! {
-    static managed TYPE_SET: Vec<HashSet<String>> = vec![HashSet::new()];
+    static managed TYPE_SET: Vec<HashSet<String>> = vec![
+        HashSet::from_iter([
+                "__builtin_va_list"
+            ]
+            .into_iter()
+            .map(|x| (*x).into())
+        )
+    ];
     static managed IS_TYPEDEF: bool = false;
 }
 
@@ -33,30 +41,27 @@ fn contains_typedef<T>(ast: &Ast<T>) -> bool {
 }
 
 fn register_types<T>(ast: &Ast<T>) {
-
     match ast.symbol.as_str() {
         "init_declarator" => {
             if let AstNode::Ast(ref ast) = ast.children[0] {
                 register_types(&ast);
             }
         }
-        "direct_declarator" => {
-            match ast.children[0] {
-                AstNode::Ast(ref ast) => {
-                    register_types(&ast);
-                }
-                AstNode::Token(ref token) => {
-                    if token.symbol.as_str() == "IDENTIFIER" {
-                        let len = TYPE_SET.borrow().len();
-                        TYPE_SET.borrow_mut()[len - 1].insert(token.as_str().into());
-                    } else {
-                        if let AstNode::Ast(ref ast) = ast.children[1] {
-                            register_types(&ast);
-                        }
+        "direct_declarator" => match ast.children[0] {
+            AstNode::Ast(ref ast) => {
+                register_types(&ast);
+            }
+            AstNode::Token(ref token) => {
+                if token.symbol.as_str() == "IDENTIFIER" {
+                    let len = TYPE_SET.borrow().len();
+                    TYPE_SET.borrow_mut()[len - 1].insert(token.as_str().into());
+                } else {
+                    if let AstNode::Ast(ref ast) = ast.children[1] {
+                        register_types(&ast);
                     }
                 }
             }
-        }
+        },
         _ => {
             for child in ast.children.iter() {
                 if let AstNode::Ast(ast) = child {
@@ -106,7 +111,7 @@ lang! {
     FLOATING_POINT => r#"\d+[Ee][\+-]?\d+[fFlL]?\b|\d*\.\d+[fFlL]?\b|\d*\.\d+[Ee][\+-]?\d+[fFlL]?\b|\d+\.\d*[Ee][\+-]?\d+[fFlL]?\b|\d+\.\d*[fFlL]?\b"#,
     INTEGER => r#"0[xX][0-9A-Fa-f]+[uUlL]*\b|\d+[uUlL]*\b"#,
     CHAR => r#"[a-zA-Z_]?'(:?[^\\']|\\.)*'"#,
-    STRING_LITERAL => r#"[a-zA-Z_]?"(:?[^\\"]|\\.)*""#,
+    STRING_LITERAL => r#"([a-zA-Z_]?"(:?[^\\"]|\\.)*")"#,
     IDENTIFIER => r"[a-zA-Z_]\w*\b"
         => |tok, ctrl| {
             let sym: String = tok.as_str().into();
@@ -142,7 +147,7 @@ lang! {
     ],
     argument_expression_list => [
         assignment_expression |@flatten|,
-        argument_expression_list "," assignment_expression
+        argument_expression_list "," assignment_expression |@flatten|
     ],
     unary_expression => [
         postfix_expression |@flatten|,

@@ -103,6 +103,7 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 	else if ( la == '(' )
 	{
 		std::vector<QualifiedDecl> args;
+		bool is_va_args = false;
 		for ( int j = 2; j < children.size() - 1; ++j )
 		{
 			auto &child = children[ j ];
@@ -110,6 +111,10 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 			{
 				auto decl = get<QualifiedDecl>( codegen( child ) );
 				args.emplace_back( decl );
+			}
+			else if ( child[ 1 ].asString() == "..." )
+			{
+				is_va_args = true;
 			}
 		}
 		if ( args.size() != 1 || !args[ 0 ].type.is<mty::Void>() )
@@ -155,7 +160,7 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 			args.clear();
 		}
 		builder->add_level( std::make_shared<mty::Function>(
-		  builder->get_type()->type, args ) );
+		  builder->get_type()->type, args, is_va_args ) );
 
 		if ( an != 0 )
 		{
@@ -320,66 +325,50 @@ int Declaration::reg()
 							  else
 							  {  // variable declaration
 
-								  Value *init = nullptr;
-								  if ( children.size() > 1 )  // decl with init
+								  //   Value *init = nullptr;  // decl with init
+								  if ( children.size() > 1 && declspec.has_attribute( SC_EXTERN ) )
 								  {
-									  if ( declspec.has_attribute( SC_EXTERN ) )
-									  {
-										  infoList->add_msg(
-											MSG_TYPE_ERROR,
-											fmt( "external variable must not have an initializer" ),
-											children[ 2 ] );
-									  }
-									  auto val = get<QualifiedValue>( codegen( children[ 2 ], &builder ) );
-									  init = val.value( children[ 2 ] ).get();
+									  infoList->add_msg(
+										MSG_TYPE_ERROR,
+										fmt( "external variable must not have an initializer" ),
+										children[ 2 ] );
 								  }
 
 								  // deal with decl
 								  Value *alloc = nullptr;
-								  if ( declspec.has_attribute( SC_EXTERN ) || declspec.has_attribute( SC_STATIC ) )
+								  if ( declspec.has_attribute( SC_EXTERN ) ||
+									   declspec.has_attribute( SC_STATIC ) || symTable.getLevel() == 0 )
 								  {
-									  auto cc = dyn_cast_or_null<Constant>( init );
-									  if ( init && !cc )
+									  Constant *init = nullptr;
+									  if ( children.size() > 1 )
 									  {
-										  infoList->add_msg(
-											MSG_TYPE_ERROR,
-											fmt( "initializer element is not a compile-time constant" ),
-											children[ 2 ] );
-										  HALT();
+										  init = get<Option<Constant *>>(
+												   codegen( children[ 2 ],
+															TypeView( std::make_shared<QualifiedType>( type ) ) ) )
+												   .unwrap();
 									  }
+									  //   auto cc = dyn_cast_or_null<Constant>( init );
+									  //   if ( init && !cc )
+									  //   {
+									  // 	  infoList->add_msg(
+									  // 		MSG_TYPE_ERROR,
+									  // 		fmt( "initializer element is not a compile-time constant" ),
+									  // 		children[ 2 ] );
+									  // 	  HALT();
+									  //   }
 									  alloc = new GlobalVariable(
 										*TheModule,
 										type->type, false,
-										declspec.has_attribute( SC_EXTERN ) ? GlobalValue::ExternalLinkage : GlobalValue::InternalLinkage,
-										cc );
+										declspec.has_attribute( SC_EXTERN ) ? GlobalValue::ExternalLinkage : declspec.has_attribute( SC_STATIC ) ? GlobalValue::InternalLinkage : GlobalValue::CommonLinkage,
+										init );
 								  }
 								  else
 								  {
-									  if ( symTable.getLevel() == 0 )
-									  {
-										  auto cc = dyn_cast_or_null<Constant>( init );
-										  if ( init && !cc )
-										  {
-											  infoList->add_msg(
-												MSG_TYPE_ERROR,
-												fmt( "initializer element is not a compile-time constant" ),
-												children[ 2 ] );
-											  HALT();
-										  }
-										  alloc = new GlobalVariable(
-											*TheModule,
-											type->type, false,
-											GlobalValue::CommonLinkage,
-											cc );
-									  }
-									  else
-									  {
-										  alloc = Builder.CreateAlloca( type->type );
-										  if ( init )
-										  {
-											  Builder.CreateStore( init, alloc );
-										  }
-									  }
+									  alloc = Builder.CreateAlloca( type->type );
+									  //   if ( init )
+									  //   {
+									  // 	  Builder.CreateStore( init, alloc );
+									  //   }
 								  }
 								  alloc->setName( name );
 								  symTable.insert(
@@ -396,7 +385,7 @@ int Declaration::reg()
 			  if ( child_cnt == 0 )
 			  {
 				  auto &type = declspec.get_type();
-				  if ( type.is_none() || !type.unwrap().is<mty::Struct>() )
+				  if ( type.is_none() || !type.unwrap().is<mty::Structural>() )
 				  {
 					  infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything", node );
 				  }
@@ -460,7 +449,47 @@ int Declaration::reg()
 			  }
 			  else if ( struct_or_union == 'u' )
 			  {
-				  UNIMPLEMENTED( "union" );
+				  if ( children.size() < 3 )
+				  {
+					  auto name = children[ 1 ][ 1 ].asString();
+					  auto fullName = "union." + name;
+
+					  if ( auto sym = symTable.find( fullName ) )
+					  {
+						  if ( sym->is_type() ) return sym->as_type();
+						  INTERNAL_ERROR();
+					  }
+					  else
+					  {
+						  return QualifiedType( std::make_shared<mty::Union>( name ) );
+					  }
+				  }
+				  else
+				  {
+					  Json::Value *struct_decl;
+					  auto la = children[ 1 ][ 0 ].asString();
+					  auto has_id = la == "IDENTIFIER";
+
+					  auto union_ty = has_id ? std::make_shared<mty::Union>( children[ 1 ][ 1 ].asString() ) : std::make_shared<mty::Union>();
+
+					  {
+						  auto decls = get_structural_decl( children[ has_id ? 3 : 2 ] );
+						  union_ty->set_body( decls, node );
+					  }
+
+					  auto type = QualifiedType( union_ty );
+
+					  if ( has_id )
+					  {  // struct A without typedefs is named "struct.A"
+						  auto name = children[ 1 ][ 1 ].asString();
+						  auto fullName = "union." + name;
+
+						  symTable.insert( fullName, type, children[ 1 ] );
+					  }
+
+					  return type;
+				  }
+				  //   UNIMPLEMENTED( "union" );
 			  }
 			  else
 			  {

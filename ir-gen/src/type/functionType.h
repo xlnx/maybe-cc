@@ -10,10 +10,12 @@ struct Function : Address
 	static constexpr auto self_type = TypeName::FunctionType;
 
 	std::vector<QualifiedDecl> args;
+	bool is_va_args = false;
 
-	Function( Type *result_type, const std::vector<QualifiedDecl> &args ) :
-	  Address( FunctionType::get( result_type, map_type( args ), false ) ),
-	  args( args )
+	Function( Type *result_type, const std::vector<QualifiedDecl> &args, bool is_va_args ) :
+	  Address( FunctionType::get( result_type, map_type( args ), is_va_args ) ),
+	  args( args ),
+	  is_va_args( is_va_args )
 	{
 		type_name = self_type;
 	}
@@ -30,6 +32,11 @@ struct Function : Address
 		for ( int i = 0; i < args.size(); ++i )
 		{
 			os << ( i == 0 ? "" : ", " ) << args[ i ].type;
+		}
+		if ( is_va_args )
+		{
+			if ( args.size() > 0 ) os << ", ";
+			os << "...";
 		}
 		os << ")";
 	}

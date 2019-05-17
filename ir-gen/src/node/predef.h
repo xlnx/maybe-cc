@@ -17,10 +17,12 @@ using AstType = variant<
   QualifiedDecl,
   QualifiedTypeBuilder *,
   Option<QualifiedValue>,
+  Option<Constant *>,
   VoidType>;
 
 using ArgsType = variant<
   QualifiedTypeBuilder *,
+  TypeView,
   VoidType>;
 
 template <typename I, typename O>

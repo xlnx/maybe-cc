@@ -32,24 +32,28 @@ struct Union : Structural
 			infoList->add_msg( MSG_TYPE_ERROR, fmt( "`union ", name.unwrap(), "` redefined" ), ast );
 			HALT();
 		}
+
 		static_cast<llvm::StructType *>( this->type )->setBody( map_comp( comps ) );
-		unsigned max_bit_size = 0;
-		Type *long_ty = nullptr;
+
 		for ( auto &comp : comps )
 		{
-			if ( auto bit_size = comp.type->type->getPrimitiveSizeInBits() )
-			{
-				if ( bit_size > max_bit_size )
-				{
-					max_bit_size = bit_size;
-					long_ty = comp.type->type;
-				}
-			}
-			if ( long_ty != nullptr )
-			{
-				UNIMPLEMENTED();
-				this->comps.emplace( "<@unnamed>", long_ty );
-			}
+			this->comps.emplace( comp.name.unwrap(), comp.type );
+		}
+	}
+
+	const QualifiedType &get_member( const std::string &member, Json::Value &ast ) const
+	{
+		if ( this->comps.find( member ) != this->comps.end() )
+		{
+			return this->comps.find( member )->second;
+		}
+		else
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "union has no member named `", member, "`" ),
+			  ast );
+			HALT();
 		}
 	}
 
@@ -59,20 +63,21 @@ struct Union : Structural
 		if ( is_volatile ) os << "volatile ";
 		os << "union";
 		if ( this->name.is_some() ) os << " " << this->name.unwrap();
-		if ( !static_cast<llvm::StructType *>( this->type )->isOpaque() )
-		{
-			auto indent = decl_indent;
-			decl_indent += "  ";
-			os << " {\n";
-			for ( auto &arg : this->comps )
-			{
-				os << decl_indent << arg.first << " : " << arg.second << ";\n";
-			}
-			decl_indent = indent;
-			os << decl_indent << "}";
-		}
+		// if ( !static_cast<llvm::StructType *>( this->type )->isOpaque() )
+		// {
+		// 	auto indent = decl_indent;
+		// 	decl_indent += "  ";
+		// 	os << " {\n";
+		// 	for ( auto &arg : this->comps )
+		// 	{
+		// 		os << decl_indent << arg.first << " : " << arg.second << ";\n";
+		// 	}
+		// 	decl_indent = indent;
+		// 	os << decl_indent << "}";
+		// }
 		if ( st.size() != ++id )
 		{
+			os << " ";
 			st[ id ]->print( os, st, id );
 		}
 	}
@@ -86,15 +91,33 @@ public:
 	bool impl_is_same_without_cv( const Qualified &other ) const override
 	{
 		auto &ref = static_cast<Union const &>( other );
-		return this->name.is_some() && ref.name.is_some() &&
-			   this->name.unwrap() == ref.name.unwrap();
+		return this->type == ref.type;
 	}
 
 private:
 	static std::vector<Type *> map_comp( const std::vector<QualifiedDecl> &comps )
 	{
 		std::vector<Type *> new_args;
-		for ( auto arg : comps ) new_args.push_back( arg.type );
+		unsigned max_bit_size = 0;
+		Type *long_ty = nullptr;
+
+		for ( auto comp : comps )
+		{
+			if ( auto bit_size = comp.type->type->getPrimitiveSizeInBits() )
+			{
+				if ( bit_size > max_bit_size )
+				{
+					max_bit_size = bit_size;
+					long_ty = comp.type->type;
+				}
+			}
+		}
+
+		if ( long_ty )
+		{
+			new_args.emplace_back( long_ty );
+		}
+
 		return new_args;
 	}
 };

@@ -95,12 +95,14 @@ public:
 		}
 		if ( auto fn = type->as<mty::Function>() )
 		{
-			if ( args.size() != fn->args.size() )
+			if ( fn->is_va_args && args.size() < fn->args.size() ||
+				 !fn->is_va_args && args.size() != fn->args.size() )
 			{
 				infoList->add_msg(
 				  MSG_TYPE_ERROR,
 				  fmt( "too ", args.size() > fn->args.size() ? "many" : "few",
-					   " arguments to function call, exprected ", fn->args.size(),
+					   " arguments to function call, exprected ",
+					   fn->is_va_args ? "at least " : "", fn->args.size(),
 					   ", have ", args.size() ),
 				  ast );
 				HALT();
@@ -108,11 +110,13 @@ public:
 			std::vector<Value *> args_val;
 			for ( auto i = 0; i != args.size(); ++i )
 			{
+				if ( args[ i ].is_lvalue ) INTERNAL_ERROR();
 				args_val.emplace_back(
-				  args[ i ].cast(
-							 TypeView( std::make_shared<QualifiedType>( fn->args[ i ].type ) ),
-							 children[ i + 2 ] )
-					.get() );
+				  i < fn->args.size() ? args[ i ].cast(
+												   TypeView( std::make_shared<QualifiedType>( fn->args[ i ].type ) ),
+												   children[ i + 2 ] )
+										  .get()
+									  : args[ i ].get() );
 			}
 			this->type.next();
 			this->val = Builder.CreateCall( this->val, args_val );

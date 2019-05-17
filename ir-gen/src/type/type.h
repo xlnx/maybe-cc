@@ -203,6 +203,11 @@ public:
 		return *this;
 	}
 
+	const QualifiedType *get_ref_type() const
+	{
+		return type.get();
+	}
+
 	friend std::ostream &operator<<( std::ostream &os, const TypeView &view );
 
 public:

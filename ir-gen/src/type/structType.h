@@ -41,7 +41,7 @@ struct Struct : Structural
 				auto ind = static_cast<ConstantInt *>(
 				  Constant::getIntegerValue(
 					TypeView::getIntTy( false )->type,
-					APInt( 32, uint64_t(index), false ) ) );
+					APInt( 32, uint64_t( index ), false ) ) );
 				this->comps.emplace(
 				  comp.name.unwrap(),
 				  std::make_pair( comp.type, ind ) );
@@ -94,6 +94,7 @@ struct Struct : Structural
 		// }
 		if ( st.size() != ++id )
 		{
+			os << " ";
 			st[ id ]->print( os, st, id );
 		}
 	}
@@ -108,8 +109,6 @@ public:
 	{
 		auto &ref = static_cast<Struct const &>( other );
 		return this->type == ref.type;
-		// return this->name.is_some() && ref.name.is_some() &&
-		// 	   this->name.unwrap() == ref.name.unwrap();
 	}
 
 private:

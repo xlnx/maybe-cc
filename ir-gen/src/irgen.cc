@@ -97,7 +97,7 @@ JumpTable<NodeHandler> handlers = {
 			  auto ret_ty = TypeView( std::make_shared<QualifiedType>( type ) ).next();
 			  AllocaInst *retValue;
 			  LoadInst *retLoad;
-			  if ( !ret_ty->is<mty::Void>() )
+			  if ( !ret_ty->is<mty::Void>() && ( name != "main" || !ret_ty->is<mty::Integer>() ) )
 			  {
 				  retValue = Builder.CreateAlloca( ret_ty->type );
 				  retLoad = Builder.CreateLoad( retValue );
@@ -133,10 +133,11 @@ JumpTable<NodeHandler> handlers = {
 		  }
 
 		  std::string fn_err;
-		  raw_string_ostream fn_err_stream(fn_err);
-		  if (verifyFunction(*fn, &fn_err_stream)) {
+		  raw_string_ostream fn_err_stream( fn_err );
+		  if ( verifyFunction( *fn, &fn_err_stream ) )
+		  {
 			  fn_err_stream.flush();
-			  INTERNAL_ERROR(fmt("\nLLVM Verify Function Failed:\n", fn_err));
+			  INTERNAL_ERROR( fmt( "\nLLVM Verify Function Failed:\n", fn_err ) );
 		  }
 
 		  dbg( symTable );
@@ -146,6 +147,7 @@ JumpTable<NodeHandler> handlers = {
 	  } ) },
 
 	{ "initializer", []( Json::Value &node, const ArgsType &arg ) -> AstType {
+		 UNIMPLEMENTED();
 		 auto &children = node[ "children" ];
 		 if ( children[ 0 ][ "type" ].isNull() )
 		 {
@@ -215,20 +217,43 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	Json::Reader reader;
 	Json::Value root;
 
-    // init
+	dbg( "enter ir-gen" );
+
+	// init
 	TheModule = make_unique<Module>( "asd", TheContext );
 	currentFunction = nullptr;
 	funcName = "";
-	while (!continueJump.empty()) continueJump.pop();
-	while (!breakJump.empty()) breakJump.pop();
+	while ( !continueJump.empty() ) continueJump.pop();
+	while ( !breakJump.empty() ) breakJump.pop();
 
-    // finish
+	// finish
 	if ( !reader.parse( ast_json, root ) )
 	{
-	    INTERNAL_ERROR(fmt("jsoncpp failed to parse ast.json"));
+		INTERNAL_ERROR( fmt( "jsoncpp failed to parse ast.json" ) );
 	}
 
 	symTable.push();
+
+	Json::Value dummy;
+	std::vector<QualifiedDecl> comps;
+
+	comps.emplace_back( QualifiedType( *TypeView::getCharTy( true ).get_ref_type() ), "val" );
+	auto struct_ty = std::make_shared<mty::Struct>();
+	struct_ty->set_body( comps, dummy );
+
+	dbg( "register va_list" );
+
+	auto type = DeclarationSpecifiers()
+				  .add_type( QualifiedType( struct_ty ), dummy )
+				  .into_type_builder( dummy )
+				  .build();
+	dbg( type );
+
+	symTable.insert( "__builtin_va_list", type, dummy );
+
+	dbg( "enter global" );
+
+	//	StackTrace _;
 
 	try
 	{
@@ -248,15 +273,16 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	symTable.pop();
 
 	std::string module_err;
-	raw_string_ostream module_err_stream(module_err);
-	if (verifyModule(*TheModule, &module_err_stream)) {
+	raw_string_ostream module_err_stream( module_err );
+	if ( verifyModule( *TheModule, &module_err_stream ) )
+	{
 		module_err_stream.flush();
-		INTERNAL_ERROR(fmt("\nLLVM Verify Module Failed:\n", module_err));
+		INTERNAL_ERROR( fmt( "\nLLVM Verify Module Failed:\n", module_err ) );
 	}
 
 	std::string cxx_ir;
 	raw_string_ostream str_stream( cxx_ir );
-//	TheModule->print( errs(), nullptr );
+	//	TheModule->print( errs(), nullptr );
 	TheModule->print( str_stream, nullptr );
 
 	auto ir = new char[ cxx_ir.length() + 1 ];
@@ -268,11 +294,11 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 extern "C" {
 char *gen_llvm_ir( const char *ast_json )
 {
-    char *val = nullptr;
-    secure_exec([&]{
-        val = gen_llvm_ir_cxx( ast_json );
-    });
-    return val;
+	char *val = nullptr;
+	secure_exec( [&] {
+		val = gen_llvm_ir_cxx( ast_json );
+	} );
+	return val;
 }
 
 void free_llvm_ir( char *ir )

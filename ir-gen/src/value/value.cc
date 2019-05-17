@@ -145,7 +145,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 			}
 		}
 	}
-	else if ( dst->is<mty::Struct>() )
+	else if ( dst->is<mty::Structural>() )
 	{
 		if ( !dst.is_same_discard_qualifiers( this->type ) )
 		{
@@ -243,5 +243,6 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 	{
 		INTERNAL_ERROR();
 	}
+
 	return *this;
 }

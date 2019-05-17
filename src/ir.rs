@@ -1,5 +1,5 @@
-use myrpg::*;
 use super::msg::*;
+use myrpg::*;
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -13,7 +13,7 @@ pub fn ir_gen<T>(ast: &Ast<T>) -> Result<String, ()> {
     let ir_c: *const c_char;
 
     unsafe {
-        let ast_json_c= CString::new(ast.to_json().as_str()).unwrap();
+        let ast_json_c = CString::new(ast.to_json().as_str()).unwrap();
         ir_c = gen_llvm_ir(ast_json_c.as_ptr());
     }
 
