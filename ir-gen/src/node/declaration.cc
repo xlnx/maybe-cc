@@ -33,7 +33,7 @@ static Constant *make_constant_object( TypeView elem, InitList &init,
 									   std::size_t &curr );
 
 static Constant *make_constant_array( TypeView array_ty, InitList &init,
-									  std::size_t &curr, uint64_t &array_len );
+									  std::size_t &curr );
 
 static Constant *make_constant_struct( const mty::Struct *struct_ty, InitList &init,
 									   std::size_t &curr );
@@ -41,18 +41,28 @@ static Constant *make_constant_struct( const mty::Struct *struct_ty, InitList &i
 static Constant *make_constant_union( const mty::Union *union_ty, InitList &init,
 									  std::size_t &curr );
 
+Constant *make_constant_value( const TypeView &view, QualifiedValue &value, Json::Value &ast )
+{
+	if ( dyn_cast_or_null<Constant>( value.get() ) )
+	{
+		return static_cast<Constant *>( value.cast( view, ast ).get() );
+	}
+	else
+	{  // this elem is not constant
+		return ConstantAggregateZero::get( view->type );
+	}
+}
+
 static Constant *make_constant_object( TypeView elem, InitList &init,
 									   std::size_t &curr )
 {
 	if ( auto arr_ty = elem->as<mty::Array>() )
 	{
-		uint64_t len;
-
 		if ( init[ curr ].value.is_none() )
 		{  // int a[][2] = { {0, 1}, {2, 3} };
 			auto &desc = init[ curr ].childs;
 			std::size_t curr_ch = 0;
-			auto cc = make_constant_array( elem, desc, curr_ch, len );
+			auto cc = make_constant_array( elem, desc, curr_ch );
 
 			if ( desc.size() > curr_ch )
 			{  // int a[][2] = { {0, 1, 2, 3} ... };
@@ -66,7 +76,7 @@ static Constant *make_constant_object( TypeView elem, InitList &init,
 		}
 		else
 		{  // int a[][2] = { 0, 1, 2, 3 };
-			return make_constant_array( elem, init, curr, len );
+			return make_constant_array( elem, init, curr );
 		}
 	}
 	else if ( auto struct_ty = elem->as<mty::Struct>() )
@@ -155,10 +165,7 @@ static Constant *make_constant_object( TypeView elem, InitList &init,
 		++curr;
 		if ( elem_ptr )
 		{
-			return static_cast<Constant *>(
-			  elem_ptr->value.unwrap()
-				.cast( elem, elem_ptr->ast )
-				.get() );
+			return make_constant_value( elem, elem_ptr->value.unwrap(), elem_ptr->ast );
 		}
 		else
 		{
@@ -167,7 +174,7 @@ static Constant *make_constant_object( TypeView elem, InitList &init,
 	}
 }
 
-static Constant *make_constant_array( TypeView array_ty, InitList &init, std::size_t &curr, uint64_t &array_len )
+static Constant *make_constant_array( TypeView array_ty, InitList &init, std::size_t &curr )
 {
 	std::vector<Constant *> elems;
 
@@ -175,13 +182,12 @@ static Constant *make_constant_array( TypeView array_ty, InitList &init, std::si
 	if ( !arr ) INTERNAL_ERROR();
 
 	auto is_fixed_size = arr->len.is_some();
-	array_len = is_fixed_size ? arr->len.unwrap() : 0;
 
 	auto &elem_ty = array_ty.next();
 
 	if ( is_fixed_size )
 	{
-		for ( int i = 0; i < array_len; ++i )
+		for ( int i = 0; i < arr->len.unwrap(); ++i )
 		{
 			if ( curr < init.size() )
 			{
@@ -198,7 +204,6 @@ static Constant *make_constant_array( TypeView array_ty, InitList &init, std::si
 		while ( curr < init.size() )
 		{
 			elems.emplace_back( make_constant_object( elem_ty, init, curr ) );
-			array_len++;
 		}
 	}
 	return ConstantArray::get( static_cast<ArrayType *>( arr->type ), elems );
@@ -252,7 +257,7 @@ static Constant *make_constant_union( const mty::Union *union_ty, InitList &init
 	  static_cast<StructType *>( union_ty->type ), elems );
 }
 
-static Constant *make_constant_init( const QualifiedType &type, InitItem &init, uint64_t &array_len )
+static Constant *make_constant_init( const QualifiedType &type, InitItem &init )
 {
 	auto view = TypeView( std::make_shared<QualifiedType>( type ) );
 	bool is_constant = true;
@@ -292,12 +297,28 @@ static Constant *make_constant_init( const QualifiedType &type, InitItem &init, 
 	}
 	else
 	{
-		return static_cast<Constant *>(
-		  init.value.unwrap()
-			.cast(
-			  TypeView( std::make_shared<QualifiedType>( type ) ),
-			  init.ast )
-			.get() );
+		return make_constant_value(
+		  TypeView( std::make_shared<QualifiedType>( type ) ),
+		  init.value.unwrap(),
+		  init.ast );
+	}
+}
+
+static Constant *make_local_constant_init( const QualifiedType &type, InitItem &init )
+{
+	auto view = TypeView( std::make_shared<QualifiedType>( type ) );
+
+	// all elements are constant
+	if ( init.value.is_none() )
+	{
+		std::size_t curr = 0;
+		InitList fake = { init };
+
+		return make_constant_object( view, fake, curr );
+	}
+	else
+	{
+		return make_constant_value( view, init.value.unwrap(), init.ast );
 	}
 }
 
@@ -664,16 +685,14 @@ int Declaration::reg()
 									   declspec.has_attribute( SC_STATIC ) || symTable.getLevel() == 0 )
 								  {
 									  Constant *cc = nullptr;
-									  uint64_t array_len = 0;
 
 									  if ( init.is_some() )
 									  {
-										  cc = make_constant_init( type, init.unwrap(), array_len );
+										  cc = make_constant_init( type, init.unwrap() );
 									  }
 
 									  if ( !type->is_complete() )
 									  {
-										  UNIMPLEMENTED();
 										  uint64_t len = 0;
 										  if ( !declspec.has_attribute( SC_EXTERN ) )
 										  {
@@ -685,19 +704,18 @@ int Declaration::reg()
 													node );
 												  HALT();
 											  }
-											  UNIMPLEMENTED();
+											  if ( auto ll = dyn_cast_or_null<ArrayType>( cc->getType() ) )
+											  {
+												  len = ll->getNumElements();
+											  }
+											  else
+											  {
+												  INTERNAL_ERROR();
+											  }
 										  }
 										  make_type_len( len );
 									  }
-									  //   auto cc = dyn_cast_or_null<Constant>( init );
-									  //   if ( init && !cc )
-									  //   {
-									  // 	  infoList->add_msg(
-									  // 		MSG_TYPE_ERROR,
-									  // 		fmt( "initializer element is not a compile-time constant" ),
-									  // 		children[ 2 ] );
-									  // 	  HALT();
-									  //   }
+
 									  auto linkage = GlobalVariable::CommonLinkage;
 									  if ( declspec.has_attribute( SC_EXTERN ) )
 									  {
@@ -719,11 +737,42 @@ int Declaration::reg()
 									  alloc = new GlobalVariable( *TheModule, type->type, false, linkage, cc );
 								  }
 								  else
-								  {
+								  {  // stack allocated.
+									  if ( !type->is_complete() )
+									  {
+										  if ( init.is_none() )
+										  {
+											  infoList->add_msg(
+												MSG_TYPE_ERROR,
+												fmt( "definition of variable with array type needs an explicit size or an initializer" ),
+												children[ 0 ] );
+											  HALT();
+										  }
+									  }
+									  Constant *cc = nullptr;
+									  if ( init.is_some() )
+									  {
+										  cc = make_local_constant_init( type, init.unwrap() );
+										  if ( !type->is_complete() )
+										  {
+											  if ( auto ll = dyn_cast_or_null<ArrayType>( cc->getType() ) )
+											  {
+												  make_type_len( ll->getNumElements() );
+											  }
+											  else
+											  {
+												  INTERNAL_ERROR();
+											  }
+										  }
+									  }
 									  alloc = Builder.CreateAlloca( type->type );
-									  //   if ( init )
+									  //   if ( cc )
 									  //   {
-									  // 	  Builder.CreateStore( init, alloc );
+									  // 	  Builder.CreateMemCpy(
+									  // 		alloc,
+									  // 		alloc->getPointerAlignment(),
+									  // 		cc, cc->getPointerAlignment(),
+									  // 		cc->getType()->getPrimitiveSizeInBits() );
 									  //   }
 								  }
 								  alloc->setName( name );

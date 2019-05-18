@@ -123,10 +123,20 @@ lang! {
     ;;
 
     S => [
-        translation_unit |@flatten|,
+        global_start_trig translation_unit global_end_trig |@flatten|,
         _ |@flatten|
     ],
 
+    global_start_trig => [
+        _ |@flatten| => @reduce |ast| {
+            TYPE_SET.borrow_mut().push(HashSet::new());
+        }
+    ],
+    global_end_trig => [
+        _ |@flatten| => @reduce |ast| {
+            TYPE_SET.borrow_mut().pop();
+        }
+    ],
     primary_expression => [
         IDENTIFIER,
         INTEGER,
