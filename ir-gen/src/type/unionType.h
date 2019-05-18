@@ -9,6 +9,7 @@ struct Union : Structural
 {
 	static constexpr auto self_type = TypeName::StructType;
 
+	Option<QualifiedType> first_comp;
 	std::map<std::string, QualifiedType> comps;
 	Option<std::string> name;
 
@@ -31,6 +32,11 @@ struct Union : Structural
 		{
 			infoList->add_msg( MSG_TYPE_ERROR, fmt( "`union ", name.unwrap(), "` redefined" ), ast );
 			HALT();
+		}
+
+		if ( comps.size() > 0 )
+		{
+			first_comp = comps[ 0 ].type;
 		}
 
 		static_cast<llvm::StructType *>( this->type )->setBody( map_comp( comps ) );

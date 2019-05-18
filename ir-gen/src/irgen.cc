@@ -144,35 +144,13 @@ JumpTable<NodeHandler> handlers = {
 		  symTable.pop();
 
 		  return VoidType{};
-	  } ) },
-
-	{ "initializer", []( Json::Value &node, const ArgsType &arg ) -> AstType {
-		 UNIMPLEMENTED();
-		 auto &children = node[ "children" ];
-		 if ( children[ 0 ][ "type" ].isNull() )
-		 {
-			 auto type = children[ 0 ][ 0 ].asString();
-			 if ( type == "CONSTANT" )
-			 {
-				 //return children[ 0 ][ 1 ].asString();
-			 }
-			 else if ( type == "IDENTIFIER" )
-			 {
-			 }
-			 UNIMPLEMENTED( "initializer" );
-		 }
-		 else
-		 {
-			 TODO( "initializer not implemented" );
-			 return codegen( children[ 0 ] );
-			 //  UNIMPLEMENTED( "initializer" );
-		 }
-	 } }
+	  } ) }
 };
 
-static auto volatile __decl = Declaration::reg();
-static auto volatile __stmt = Statement::reg();
-static auto volatile __expr = Expression::reg();
+static auto const volatile __decl = Declaration::reg();
+static auto const volatile __stmt = Statement::reg();
+static auto const volatile __expr = Expression::reg();
+static auto const volatile __init = Initializer::reg();
 
 std::string indent( int num )
 {
@@ -226,6 +204,8 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	while ( !continueJump.empty() ) continueJump.pop();
 	while ( !breakJump.empty() ) breakJump.pop();
 
+	dbg( "parsing ast" );
+
 	// finish
 	if ( !reader.parse( ast_json, root ) )
 	{
@@ -234,10 +214,12 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 
 	symTable.push();
 
+	dbg( "building va_list" );
+
 	Json::Value dummy;
 	std::vector<QualifiedDecl> comps;
 
-	comps.emplace_back( QualifiedType( *TypeView::getCharTy( true ).get_ref_type() ), "val" );
+	comps.emplace_back( TypeView::getCharTy( true ).into_type(), "val" );
 	auto struct_ty = std::make_shared<mty::Struct>();
 	struct_ty->set_body( comps, dummy );
 
@@ -272,6 +254,11 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	dbg( symTable );
 	symTable.pop();
 
+	if ( is_debug_mode )
+	{
+		TheModule->print( errs(), nullptr );
+	}
+
 	std::string module_err;
 	raw_string_ostream module_err_stream( module_err );
 	if ( verifyModule( *TheModule, &module_err_stream ) )
@@ -282,7 +269,6 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 
 	std::string cxx_ir;
 	raw_string_ostream str_stream( cxx_ir );
-	//	TheModule->print( errs(), nullptr );
 	TheModule->print( str_stream, nullptr );
 
 	auto ir = new char[ cxx_ir.length() + 1 ];

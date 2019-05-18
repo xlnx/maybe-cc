@@ -77,7 +77,7 @@ static QualifiedValue logical_not( QualifiedValue &val, Json::Value &ast )
 	}
 	return QualifiedValue(
 	  std::make_shared<QualifiedType>(
-		*TypeView::getBoolTy().get_ref_type() ),
+		TypeView::getBoolTy().into_type() ),
 	  Builder.CreateNot(
 		val
 		  .cast( TypeView::getBoolTy(), ast )
@@ -652,7 +652,7 @@ int Expression::reg()
 
 						   Json::Value dummy;
 						   auto builder = DeclarationSpecifiers()
-											.add_type( *TypeView::getCharTy( true ).get_ref_type(), dummy )
+											.add_type( TypeView::getCharTy( true ).into_type(), dummy )
 											.into_type_builder( dummy );
 						   auto type = builder
 										 .add_level( std::make_shared<mty::Array>(

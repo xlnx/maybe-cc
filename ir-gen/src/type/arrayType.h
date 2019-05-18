@@ -8,13 +8,41 @@ struct Array : Address
 {
 	static constexpr auto self_type = TypeName::ArrayType;
 
-	std::size_t len;
+	Option<std::size_t> len;
 
 	Array( Type *element_type, std::size_t len ) :
-	  Address( ArrayType::get( element_type, len ) ),
+	  Address( llvm::ArrayType::get( element_type, len ) ),
 	  len( len )
 	{
 		type_name = self_type;
+	}
+
+	Array( Type *element_type ) :
+	  Address( element_type )
+	{
+	}
+
+	Array &set_length( std::size_t len )
+	{
+		if ( this->len.is_some() ) INTERNAL_ERROR();
+		this->len = len;
+		this->type = ArrayType::get( this->type, len );
+		return *this;
+	}
+
+	virtual bool is_valid_parameter_type() const
+	{
+		return true;
+	}
+
+	bool is_allocable() const override
+	{
+		return true;
+	}
+
+	bool is_complete() const override
+	{
+		return this->len.is_some();
 	}
 
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
@@ -25,7 +53,9 @@ struct Array : Address
 			st[ id ]->print( os, st, id );
 			if ( st[ id ]->is<mty::Pointer>() ) os << ")";
 		}
-		os << "[" << len << "]";
+		os << "[";
+		if ( len.is_some() ) os << len;
+		os << "]";
 	}
 
 	std::shared_ptr<Qualified> clone() const override
@@ -37,7 +67,9 @@ protected:
 	bool impl_is_same_without_cv( const Qualified &other ) const override
 	{
 		auto &ref = static_cast<const Array &>( other );
-		return ref.len == len;
+		return ref.len.is_none() && len.is_none() ||
+			   ref.len.is_some() && len.is_some() &&
+				 ref.len.unwrap() == len.unwrap();
 	}
 
 public:

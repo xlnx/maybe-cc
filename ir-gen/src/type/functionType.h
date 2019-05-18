@@ -20,6 +20,11 @@ struct Function : Address
 		type_name = self_type;
 	}
 
+	bool is_valid_element_type() const override
+	{
+		return false;
+	}
+
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
 	{
 		if ( st.size() != ++id )

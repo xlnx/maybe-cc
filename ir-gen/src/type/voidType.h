@@ -14,6 +14,21 @@ struct Void : Qualified
 		type_name = self_type;
 	}
 
+	bool is_valid_element_type() const override
+	{
+		return false;
+	}
+
+	bool is_valid_parameter_type() const override
+	{
+		return false;
+	}
+
+	bool is_allocable() const override
+	{
+		return false;
+	}
+
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override
 	{
 		if ( is_const ) os << "const ";

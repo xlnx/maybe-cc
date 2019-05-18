@@ -7,20 +7,7 @@
     <list default="true" id="8f6b31d6-2f12-4630-86e6-807ff1bf1b49" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ir-gen/src/irgen.cc" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/irgen.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/node/declaration.cc" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/node/declaration.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/node/expression.cc" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/node/expression.cc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/ir-gen/src/node/predef.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/node/predef.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/type/def.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/type/def.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/type/functionType.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/type/functionType.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/type/structType.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/type/structType.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/type/type.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/type/type.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/type/unionType.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/type/unionType.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/value/value.cc" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/value/value.cc" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ir-gen/src/value/value.h" beforeDir="false" afterPath="$PROJECT_DIR$/ir-gen/src/value/value.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ir.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ir.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lang.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lang.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/prep.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/prep.rs" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -55,7 +42,7 @@
         <entry file="file://$PROJECT_DIR$/ir-gen/src/irgen.cc">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="527">
-              <caret line="254" column="17" selection-start-line="254" selection-start-column="17" selection-end-line="254" selection-end-column="17" />
+              <caret line="262" column="17" selection-start-line="262" selection-start-column="17" selection-end-line="262" selection-end-column="17" />
             </state>
           </provider>
         </entry>
@@ -72,7 +59,7 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/ir-gen/src/type/structType.h">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="22">
+            <state relative-caret-position="-176">
               <caret line="24" column="4" selection-start-line="24" selection-start-column="4" selection-end-line="24" selection-end-column="4" />
             </state>
           </provider>
@@ -187,7 +174,7 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="7">
+  <component name="ProjectFrameBounds" extendedState="6">
     <option name="x" value="960" />
     <option name="y" value="27" />
     <option name="width" value="960" />
@@ -273,7 +260,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="27" width="1920" height="1053" extended-state="7" />
+    <frame x="0" y="27" width="1920" height="1053" extended-state="6" />
     <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.18404256" />
@@ -497,7 +484,7 @@
     <entry file="file://$PROJECT_DIR$/ir-gen/src/irgen.cc">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="527">
-          <caret line="254" column="17" selection-start-line="254" selection-start-column="17" selection-end-line="254" selection-end-column="17" />
+          <caret line="262" column="17" selection-start-line="262" selection-start-column="17" selection-end-line="262" selection-end-column="17" />
         </state>
       </provider>
     </entry>
@@ -510,7 +497,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/ir-gen/src/type/structType.h">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="22">
+        <state relative-caret-position="-176">
           <caret line="24" column="4" selection-start-line="24" selection-start-column="4" selection-end-line="24" selection-end-column="4" />
         </state>
       </provider>

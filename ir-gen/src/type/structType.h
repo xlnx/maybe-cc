@@ -9,6 +9,7 @@ struct Struct : Structural
 {
 	static constexpr auto self_type = TypeName::StructType;
 
+	mutable std::vector<QualifiedDecl> sel_comps;
 	mutable std::map<std::string, std::pair<QualifiedType, ConstantInt *>> comps;
 	Option<std::string> name;
 
@@ -32,6 +33,7 @@ struct Struct : Structural
 			infoList->add_msg( MSG_TYPE_ERROR, fmt( "`struct ", name.unwrap(), "` redefined" ), ast );
 			HALT();
 		}
+		sel_comps = comps;
 		static_cast<llvm::StructType *>( this->type )->setBody( map_comp( comps ) );
 		unsigned index = 0;
 		for ( auto &comp : comps )
@@ -67,6 +69,11 @@ struct Struct : Structural
 			  ast );
 			HALT();
 		}
+	}
+
+	bool is_complete() const override
+	{
+		return !static_cast<llvm::StructType *>( this->type )->isOpaque();
 	}
 
 	void print( std::ostream &os, const std::vector<std::shared_ptr<Qualified>> &st, int id ) const override

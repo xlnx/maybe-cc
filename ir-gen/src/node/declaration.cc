@@ -23,6 +23,284 @@ static DeclarationSpecifiers handle_decl( Json::Value &node )
 	return declspec;
 }
 
+static void traverse( const InitItem &item, const std::function<void( const InitItem & )> &handle )
+{
+	if ( item.value.is_some() ) handle( item );
+	for ( auto &node : item.childs ) traverse( node, handle );
+}
+
+static Constant *make_constant_object( TypeView elem, InitList &init,
+									   std::size_t &curr );
+
+static Constant *make_constant_array( TypeView array_ty, InitList &init,
+									  std::size_t &curr, uint64_t &array_len );
+
+static Constant *make_constant_struct( const mty::Struct *struct_ty, InitList &init,
+									   std::size_t &curr );
+
+static Constant *make_constant_union( const mty::Union *union_ty, InitList &init,
+									  std::size_t &curr );
+
+static Constant *make_constant_object( TypeView elem, InitList &init,
+									   std::size_t &curr )
+{
+	if ( auto arr_ty = elem->as<mty::Array>() )
+	{
+		uint64_t len;
+
+		if ( init[ curr ].value.is_none() )
+		{  // int a[][2] = { {0, 1}, {2, 3} };
+			auto &desc = init[ curr ].childs;
+			std::size_t curr_ch = 0;
+			auto cc = make_constant_array( elem, desc, curr_ch, len );
+
+			if ( desc.size() > curr_ch )
+			{  // int a[][2] = { {0, 1, 2, 3} ... };
+				infoList->add_msg(
+				  MSG_TYPE_WARNING,
+				  fmt( "excess elements in array initializer" ),
+				  desc[ curr_ch ].ast );
+			}
+			++curr;
+			return cc;
+		}
+		else
+		{  // int a[][2] = { 0, 1, 2, 3 };
+			return make_constant_array( elem, init, curr, len );
+		}
+	}
+	else if ( auto struct_ty = elem->as<mty::Struct>() )
+	{  // struct A a[] = {...};
+		if ( init[ curr ].value.is_none() )
+		{  // struct A a[] = {{...} ...};
+			auto &desc = init[ curr ].childs;
+			std::size_t curr_ch = 0;
+			auto cc = make_constant_struct( struct_ty, desc, curr_ch );
+			if ( desc.size() > curr_ch )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_WARNING,
+				  fmt( "excess elements in struct initializer" ),
+				  desc[ curr_ch ].ast );
+			}
+			++curr;
+			return cc;
+		}
+		else
+		{
+			return make_constant_struct( struct_ty, init, curr );
+		}
+	}
+	else if ( auto union_ty = elem->as<mty::Union>() )
+	{
+		if ( init[ curr ].value.is_none() )
+		{  // struct A a[] = {{...} ...};
+			auto &desc = init[ curr ].childs;
+			std::size_t curr_ch = 0;
+			auto cc = make_constant_union( union_ty, desc, curr_ch );
+			if ( desc.size() > curr_ch )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_WARNING,
+				  fmt( "excess elements in union initializer" ),
+				  desc[ curr_ch ].ast );
+			}
+			++curr;
+			return cc;
+		}
+		else
+		{
+			return make_constant_union( union_ty, init, curr );
+		}
+	}
+	else
+	{
+		auto *elem_ptr = &init[ curr ];
+		if ( init[ curr ].value.is_none() )
+		{
+			auto &desc = init[ curr ].childs;
+			if ( desc.size() == 0 )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_ERROR,
+				  fmt( "scalar initializer cannot be empty" ),
+				  init[ curr ].ast );
+				HALT();
+			}
+			elem_ptr = &desc[ 0 ];
+			while ( elem_ptr->value.is_none() )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_WARNING,
+				  fmt( "too many braces around scalar initializer" ),
+				  elem_ptr->ast );
+				if ( elem_ptr->childs.size() == 0 )
+				{
+					infoList->add_msg(
+					  MSG_TYPE_ERROR,
+					  fmt( "scalar initializer cannot be empty" ),
+					  elem_ptr->ast );
+					HALT();
+				}
+				elem_ptr = &elem_ptr->childs[ 0 ];
+			}
+			if ( desc.size() > 1 )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_WARNING,
+				  fmt( "excess elements in scalar initializer" ),
+				  desc[ 1 ].ast );
+			}
+		}
+		++curr;
+		if ( elem_ptr )
+		{
+			return static_cast<Constant *>(
+			  elem_ptr->value.unwrap()
+				.cast( elem, elem_ptr->ast )
+				.get() );
+		}
+		else
+		{
+			return ConstantAggregateZero::get( elem->type );
+		}
+	}
+}
+
+static Constant *make_constant_array( TypeView array_ty, InitList &init, std::size_t &curr, uint64_t &array_len )
+{
+	std::vector<Constant *> elems;
+
+	auto arr = array_ty->as<mty::Array>();
+	if ( !arr ) INTERNAL_ERROR();
+
+	auto is_fixed_size = arr->len.is_some();
+	array_len = is_fixed_size ? arr->len.unwrap() : 0;
+
+	auto &elem_ty = array_ty.next();
+
+	if ( is_fixed_size )
+	{
+		for ( int i = 0; i < array_len; ++i )
+		{
+			if ( curr < init.size() )
+			{
+				elems.emplace_back( make_constant_object( elem_ty, init, curr ) );
+			}
+			else
+			{
+				elems.emplace_back( ConstantAggregateZero::get( elem_ty->type ) );
+			}
+		}
+	}
+	else
+	{
+		while ( curr < init.size() )
+		{
+			elems.emplace_back( make_constant_object( elem_ty, init, curr ) );
+			array_len++;
+		}
+	}
+	return ConstantArray::get( static_cast<ArrayType *>( arr->type ), elems );
+}
+
+static Constant *make_constant_struct( const mty::Struct *struct_ty, InitList &init,
+									   std::size_t &curr )
+{
+	std::vector<Constant *> elems;
+	auto &sel_comps = struct_ty->sel_comps;
+
+	for ( auto &comp : sel_comps )
+	{
+		if ( curr < init.size() )
+		{
+			elems.emplace_back( make_constant_object(
+			  TypeView( std::make_shared<QualifiedType>( comp.type ) ),
+			  init, curr ) );
+		}
+		else
+		{
+			elems.emplace_back( ConstantAggregateZero::get( comp.type->type ) );
+		}
+	}
+
+	return ConstantStruct::get(
+	  static_cast<StructType *>( struct_ty->type ), elems );
+}
+
+static Constant *make_constant_union( const mty::Union *union_ty, InitList &init,
+									  std::size_t &curr )
+{
+	std::vector<Constant *> elems;
+	auto &comp = union_ty->first_comp;
+
+	if ( comp.is_some() )
+	{
+		if ( curr < init.size() )
+		{
+			elems.emplace_back( make_constant_object(
+			  TypeView( std::make_shared<QualifiedType>( comp.unwrap() ) ),
+			  init, curr ) );
+		}
+		else
+		{
+			elems.emplace_back( ConstantAggregateZero::get( comp.unwrap()->type ) );
+		}
+	}
+
+	return ConstantStruct::get(
+	  static_cast<StructType *>( union_ty->type ), elems );
+}
+
+static Constant *make_constant_init( const QualifiedType &type, InitItem &init, uint64_t &array_len )
+{
+	auto view = TypeView( std::make_shared<QualifiedType>( type ) );
+	bool is_constant = true;
+	Json::Value ast;
+
+	traverse( init, [&]( const InitItem &item ) {
+		if ( is_constant )
+		{
+			is_constant = dyn_cast_or_null<Constant>( item.value.unwrap().get() );
+			if ( !is_constant )
+			{
+				ast = item.ast;
+			}
+		}
+	} );
+
+	if ( !is_constant )
+	{
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "initializer element is not a compile-time constant" ),
+		  ast );
+		HALT();
+	}
+
+	// all elements are constant
+	if ( init.value.is_none() )
+	{
+		std::size_t curr = 0;
+		InitList fake = { init };
+
+		auto cc = make_constant_object(
+		  TypeView( std::make_shared<QualifiedType>( type ) ),
+		  fake, curr );
+
+		return cc;
+	}
+	else
+	{
+		return static_cast<Constant *>(
+		  init.value.unwrap()
+			.cast(
+			  TypeView( std::make_shared<QualifiedType>( type ) ),
+			  init.ast )
+			.get() );
+	}
+}
+
 static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuilder *const &builder, int an )
 {
 	auto &children = node[ "children" ];
@@ -30,6 +308,24 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 	auto la = *children[ an ][ 1 ].asCString();
 	if ( la == '[' )
 	{
+		auto elem_ty = builder->get_type();
+		if ( !elem_ty->is_complete() )
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "array declared with incomplete element type `", builder->build(), "`" ),
+			  node );
+			HALT();
+		}
+		if ( !elem_ty->is_valid_element_type() )
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "array declared with invalid element type `", builder->build(), "`" ),
+			  node );
+			HALT();
+		}
+
 		if ( children.size() - an == 3 )
 		{  // w [ X ]
 			auto len_val = get<QualifiedValue>( codegen( children[ an + 1 ] ) );
@@ -66,38 +362,20 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 				}
 			}
 
-			auto elem_ty = builder->get_type();
-			if ( !ArrayType::isValidElementType( elem_ty->type ) )
-			{
-				infoList->add_msg(
-				  MSG_TYPE_ERROR,
-				  fmt( "array declared with invalid element type `", builder->build(), "`" ),
-				  node );
-				HALT();
-			}
-			if ( !elem_ty->is_complete() )
-			{
-				infoList->add_msg(
-				  MSG_TYPE_ERROR,
-				  fmt( "array declared with incomplete element type `", builder->build(), "`" ),
-				  node );
-				HALT();
-			}
-
 			builder->add_level( std::make_shared<mty::Array>( elem_ty->type, len_i ) );
-
-			if ( an != 0 )
-			{
-				return get<QualifiedDecl>( codegen( children[ an - 1 ], builder ) );
-			}
-			else
-			{
-				return QualifiedDecl( builder->build() );
-			}
 		}
 		else
 		{  // w [ ]
-			UNIMPLEMENTED();
+			builder->add_level( std::make_shared<mty::Array>( elem_ty->type ) );
+		}
+
+		if ( an != 0 )
+		{
+			return get<QualifiedDecl>( codegen( children[ an - 1 ], builder ) );
+		}
+		else
+		{
+			return QualifiedDecl( builder->build() );
 		}
 	}
 	else if ( la == '(' )
@@ -127,21 +405,24 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 				{
 					auto &arg = args[ idx++ ];
 
-					if ( !arg.type->is_complete() )
+					if ( !arg.type->is_valid_parameter_type() )
 					{
-						infoList->add_msg(
-						  MSG_TYPE_ERROR,
-						  fmt( "variable of incomplete type `", arg.type, "` cannot be used as function parameter" ),
-						  child );
-						errs++;
-					}
-					else if ( !arg.type->is_valid_parameter_type() )
-					{
-						infoList->add_msg(
-						  MSG_TYPE_ERROR,
-						  fmt( "variable of type `", arg.type, "` cannot be used as function parameter" ),
-						  child );
-						errs++;
+						if ( !arg.type->is_complete() )
+						{
+							infoList->add_msg(
+							  MSG_TYPE_ERROR,
+							  fmt( "variable of incomplete type `", arg.type, "` cannot be used as function parameter" ),
+							  child );
+							errs++;
+						}
+						else
+						{
+							infoList->add_msg(
+							  MSG_TYPE_ERROR,
+							  fmt( "variable of type `", arg.type, "` cannot be used as function parameter" ),
+							  child );
+							errs++;
+						}
 					}
 					else if ( arg.type->is<mty::Function>() )
 					{
@@ -149,6 +430,19 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 									 .add_type( arg.type, child )
 									 .into_type_builder( child )
 									 .add_level( std::make_shared<mty::Pointer>( arg.type->type ) )
+									 .build();
+					}
+					else if ( arg.type->is<mty::Array>() && !arg.type->is_complete() )
+					{
+						auto builder = DeclarationSpecifiers()
+										 .add_type( TypeView(
+													  std::make_shared<QualifiedType>( arg.type ) )
+													  .next()
+													  .into_type(),
+													child )
+										 .into_type_builder( child );
+						arg.type = builder
+									 .add_level( std::make_shared<mty::Pointer>( builder.get_type()->type ) )
 									 .build();
 					}
 				}
@@ -253,6 +547,19 @@ int Declaration::reg()
 						  auto &type = decl.type;
 						  auto &name = decl.name.unwrap();
 
+						  auto make_type_len = [&]( uint64_t len ) {
+							  auto builder = DeclarationSpecifiers()
+											   .add_type(
+												 TypeView( std::make_shared<QualifiedType>( type ) )
+												   .next()
+												   .into_type(),
+												 children[ 0 ] )
+											   .into_type_builder( children[ 0 ] );
+							  type = builder
+									   .add_level( std::make_shared<mty::Array>( builder.get_type()->type, len ) )
+									   .build();
+						  };
+
 						  if ( declspec.has_attribute( SC_TYPEDEF ) )  // deal with typedef
 						  {
 							  if ( children.size() > 1 )  // decl with init
@@ -326,12 +633,29 @@ int Declaration::reg()
 							  {  // variable declaration
 
 								  //   Value *init = nullptr;  // decl with init
-								  if ( children.size() > 1 && declspec.has_attribute( SC_EXTERN ) )
+								  Option<InitItem> init;
+
+								  if ( children.size() > 1 )
 								  {
-									  infoList->add_msg(
-										MSG_TYPE_ERROR,
-										fmt( "external variable must not have an initializer" ),
-										children[ 2 ] );
+									  if ( declspec.has_attribute( SC_EXTERN ) )
+									  {
+										  infoList->add_msg(
+											MSG_TYPE_ERROR,
+											fmt( "external variable must not have an initializer" ),
+											children[ 2 ] );
+										  HALT();
+									  }
+
+									  init = get<InitItem>( codegen( children[ 2 ] ) );
+
+									  if ( type->is<mty::Array>() && init.unwrap().value.is_some() )
+									  {
+										  infoList->add_msg(
+											MSG_TYPE_ERROR,
+											fmt( "array initializer must be an initializer list" ),
+											children[ 2 ] );
+										  HALT();
+									  }
 								  }
 
 								  // deal with decl
@@ -339,13 +663,31 @@ int Declaration::reg()
 								  if ( declspec.has_attribute( SC_EXTERN ) ||
 									   declspec.has_attribute( SC_STATIC ) || symTable.getLevel() == 0 )
 								  {
-									  Constant *init = nullptr;
-									  if ( children.size() > 1 )
+									  Constant *cc = nullptr;
+									  uint64_t array_len = 0;
+
+									  if ( init.is_some() )
 									  {
-										  init = get<Option<Constant *>>(
-												   codegen( children[ 2 ],
-															TypeView( std::make_shared<QualifiedType>( type ) ) ) )
-												   .unwrap();
+										  cc = make_constant_init( type, init.unwrap(), array_len );
+									  }
+
+									  if ( !type->is_complete() )
+									  {
+										  UNIMPLEMENTED();
+										  uint64_t len = 0;
+										  if ( !declspec.has_attribute( SC_EXTERN ) )
+										  {
+											  if ( init.is_none() )
+											  {
+												  infoList->add_msg(
+													MSG_TYPE_ERROR,
+													fmt( "definition of variable with array type needs an explicit size or an initializer" ),
+													node );
+												  HALT();
+											  }
+											  UNIMPLEMENTED();
+										  }
+										  make_type_len( len );
 									  }
 									  //   auto cc = dyn_cast_or_null<Constant>( init );
 									  //   if ( init && !cc )
@@ -356,11 +698,25 @@ int Declaration::reg()
 									  // 		children[ 2 ] );
 									  // 	  HALT();
 									  //   }
-									  alloc = new GlobalVariable(
-										*TheModule,
-										type->type, false,
-										declspec.has_attribute( SC_EXTERN ) ? GlobalValue::ExternalLinkage : declspec.has_attribute( SC_STATIC ) ? GlobalValue::InternalLinkage : GlobalValue::CommonLinkage,
-										init );
+									  auto linkage = GlobalVariable::CommonLinkage;
+									  if ( declspec.has_attribute( SC_EXTERN ) )
+									  {
+										  linkage = GlobalVariable::ExternalLinkage;
+									  }
+									  else
+									  {
+										  if ( declspec.has_attribute( SC_STATIC ) )
+										  {
+											  linkage = GlobalVariable::InternalLinkage;
+										  }
+										  else if ( cc )
+										  {
+											  linkage = GlobalVariable::ExternalWeakLinkage;
+										  }
+										  if ( !cc ) cc = ConstantAggregateZero::get( type->type );
+									  }
+
+									  alloc = new GlobalVariable( *TheModule, type->type, false, linkage, cc );
 								  }
 								  else
 								  {

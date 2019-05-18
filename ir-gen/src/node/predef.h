@@ -9,6 +9,15 @@ struct VoidType
 {
 };
 
+struct InitItem
+{
+	Json::Value ast;
+	std::vector<InitItem> childs;
+	Option<QualifiedValue> value;
+};
+
+using InitList = std::vector<InitItem>;
+
 using AstType = variant<
   int,
   QualifiedValue,
@@ -17,7 +26,7 @@ using AstType = variant<
   QualifiedDecl,
   QualifiedTypeBuilder *,
   Option<QualifiedValue>,
-  Option<Constant *>,
+  InitItem,
   VoidType>;
 
 using ArgsType = variant<

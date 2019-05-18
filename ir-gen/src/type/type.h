@@ -203,9 +203,14 @@ public:
 		return *this;
 	}
 
-	const QualifiedType *get_ref_type() const
+	QualifiedType into_type() const
 	{
-		return type.get();
+		QualifiedType ty;
+		for ( int i = 0; i <= index; ++i )
+		{
+			ty.list.emplace_back( type->list[ i ] );
+		}
+		return ty;
 	}
 
 	friend std::ostream &operator<<( std::ostream &os, const TypeView &view );

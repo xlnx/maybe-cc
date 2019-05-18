@@ -438,12 +438,13 @@ lang! {
     ],
     initializer => [
         assignment_expression,
+        enter_block leave_block,
         enter_block initializer_list leave_block,
         enter_block initializer_list "," leave_block
     ],
     initializer_list => [
-        initializer,
-        initializer_list "," initializer
+        initializer |@flatten|,
+        initializer_list "," initializer |@flatten|
     ],
     statement => [
         labeled_statement |@flatten|,
