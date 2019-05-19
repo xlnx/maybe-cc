@@ -352,6 +352,7 @@ int Statement::reg()
 			  else
 			  {
 				  auto label = BasicBlock::Create( TheContext, labelType, static_cast<Function *>( currentFunction->get() ) );
+				  Builder.CreateBr( label );
 				  labelJump[ labelType ] = label;
 
 				  auto gotoSet = gotoJump.find( labelType )->second;
