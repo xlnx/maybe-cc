@@ -238,7 +238,7 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 
 	dbg( "enter global" );
 
-	//	StackTrace _;
+	// StackTrace _;
 
 	try
 	{

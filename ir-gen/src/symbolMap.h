@@ -71,26 +71,26 @@ public:
 		return nullptr;
 	}
 
-	void insert( const std::string &str, const QualifiedType &type, Json::Value &node )
+	void insert( const std::string &str, const QualifiedType &type, Json::Value &node, bool allow_replace = false )
 	{
-		if ( findThisLevel( str ) != nullptr )
+		if ( !allow_replace && findThisLevel( str ) != nullptr )
 		{
 			infoList->add_msg(
 			  MSG_TYPE_ERROR,
-			  fmt( "redefination of `", str, "`" ),
+			  fmt( "redefination of `", str, "` as different kind of symbol" ),
 			  node );
 		}
 		auto &smap = symbolStack.back();
 		smap.emplace( str, Symbol( type, getLevel() ) );
 	}
 
-	void insert( const std::string &str, const QualifiedValue &value, Json::Value &node )
+	void insert( const std::string &str, const QualifiedValue &value, Json::Value &node, bool allow_replace = false )
 	{
-		if ( findThisLevel( str ) != nullptr )
+		if ( !allow_replace && findThisLevel( str ) != nullptr )
 		{
 			infoList->add_msg(
 			  MSG_TYPE_ERROR,
-			  fmt( "redefination of `", str, "`" ),
+			  fmt( "redefination of `", str, "` as different kind of symbol" ),
 			  node );
 		}
 		auto &smap = symbolStack.back();

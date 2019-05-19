@@ -29,12 +29,6 @@ inline std::ostream &operator<<( std::ostream &os, const InitList &list )
 	return os;
 }
 
-struct EnumItem
-{
-	std::string name;
-	QualifiedValue val;
-};
-
 using AstType = variant<
   int,
   QualifiedValue,
@@ -44,7 +38,6 @@ using AstType = variant<
   QualifiedTypeBuilder *,
   Option<QualifiedValue>,
   InitItem,
-  EnumItem,
   VoidType>;
 
 using ArgsType = variant<
@@ -76,3 +69,29 @@ using NodeHandler = AstType( Json::Value &, ArgsType const & );
 extern AstType codegen( Json::Value &node, const ArgsType &arg = VoidType() );
 
 extern JumpTable<NodeHandler> handlers;
+
+template <typename T>
+QualifiedType forward_decl( const std::string &name, const std::string &fullName, bool curr_scope, Json::Value &ast )
+{
+	static_assert( std::is_base_of<mty::Qualified, T>::value, "" );
+
+	if ( auto sym = curr_scope ? symTable.findThisLevel( fullName ) : symTable.find( fullName ) )
+	{
+		dbg( "found: ", fullName );
+		if ( sym->is_type() ) return sym->as_type();
+		INTERNAL_ERROR();
+	}
+	else
+	{
+		dbg( "not found: ", fullName );
+		auto ty = QualifiedType( std::make_shared<T>( name ) );
+		symTable.insert( fullName, ty, ast );
+		return ty;
+	}
+}
+
+inline void fix_forward_decl( const std::string &fullName, const QualifiedType &type )
+{
+	Json::Value ast;
+	symTable.insert( fullName, type, ast, true );
+}

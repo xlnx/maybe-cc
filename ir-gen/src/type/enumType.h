@@ -1,19 +1,27 @@
 #pragma once
 
 #include "predef.h"
+#include "integerType.h"
 #include "type.h"
 
 namespace mty
 {
-struct Enum : Arithmetic
+struct Enum : Integer
 {
 	int id = -1;
 	Option<std::string> name;
 
 	static constexpr auto self_type = TypeName::EnumType;
 
+	Enum( const std::string &name, bool is_const = false, bool is_volatile = false ) :
+	  Integer( 32, true, is_const, is_volatile )
+	{
+		this->name = name;
+		type_name = self_type;
+	}
+
 	Enum( bool is_const = false, bool is_volatile = false ) :
-	  Arithmetic( TypeView::getIntTy( true )->type, is_const, is_volatile )
+	  Integer( 32, true, is_const, is_volatile )
 	{
 		type_name = self_type;
 	}

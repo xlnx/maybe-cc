@@ -277,25 +277,10 @@ int Declaration::reg()
 				  if ( children.size() < 3 )
 				  {
 					  auto name = children[ 1 ][ 1 ].asString();
-					  auto fullName = "struct." + name;
-
-					  if ( auto sym = curr_scope ? symTable.findThisLevel( fullName ) : symTable.find( fullName ) )
-					  {
-						  dbg( "found: ", fullName );
-						  if ( sym->is_type() ) return sym->as_type();
-						  INTERNAL_ERROR();
-					  }
-					  else
-					  {
-						  dbg( "not found: ", fullName );
-						  auto ty = QualifiedType( std::make_shared<mty::Struct>( name ) );
-						  symTable.insert( fullName, ty, node );
-						  return ty;
-					  }
+					  return forward_decl<mty::Struct>( name, "struct." + name, curr_scope, node );
 				  }
 				  else
 				  {
-					  Json::Value *struct_decl;
 					  auto la = children[ 1 ][ 0 ].asString();
 					  auto has_id = la == "IDENTIFIER";
 
@@ -313,7 +298,7 @@ int Declaration::reg()
 						  auto name = children[ 1 ][ 1 ].asString();
 						  auto fullName = "struct." + name;
 
-						  symTable.insert( fullName, type, children[ 1 ] );
+						  fix_forward_decl( fullName, type );
 					  }
 
 					  return type;
@@ -324,25 +309,10 @@ int Declaration::reg()
 				  if ( children.size() < 3 )
 				  {
 					  auto name = children[ 1 ][ 1 ].asString();
-					  auto fullName = "union." + name;
-
-					  if ( auto sym = curr_scope ? symTable.findThisLevel( fullName ) : symTable.find( fullName ) )
-					  {
-						  dbg( "found: ", fullName );
-						  if ( sym->is_type() ) return sym->as_type();
-						  INTERNAL_ERROR();
-					  }
-					  else
-					  {
-						  dbg( "not found: ", fullName );
-						  auto ty = QualifiedType( std::make_shared<mty::Union>( name ) );
-						  symTable.insert( fullName, ty, node );
-						  return ty;
-					  }
+					  return forward_decl<mty::Union>( name, "union." + name, curr_scope, node );
 				  }
 				  else
 				  {
-					  Json::Value *struct_decl;
 					  auto la = children[ 1 ][ 0 ].asString();
 					  auto has_id = la == "IDENTIFIER";
 
@@ -360,7 +330,7 @@ int Declaration::reg()
 						  auto name = children[ 1 ][ 1 ].asString();
 						  auto fullName = "union." + name;
 
-						  symTable.insert( fullName, type, children[ 1 ] );
+						  fix_forward_decl( fullName, type );
 					  }
 
 					  return type;

@@ -577,9 +577,12 @@ int Initializer::reg()
 			  if ( child_cnt == 0 )
 			  {
 				  auto &type = declspec.get_type();
-				  if ( type.is_none() || !type.unwrap().is<mty::Structural>() || !type.unwrap().is<mty::Enum>() )
+				  if ( type.is_none() ||
+					   !( type.unwrap().is<mty::Structural>() || type.unwrap().is<mty::Enum>() ) )
 				  {
-					  infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything", node );
+					  infoList->add_msg(
+						MSG_TYPE_WARNING,
+						"declaration does not declare anything", node );
 				  }
 			  }
 
