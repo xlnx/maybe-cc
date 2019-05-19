@@ -46,6 +46,10 @@ JumpTable<NodeHandler> handlers = {
 				  INTERNAL_ERROR();
 			  }
 		  }
+
+		  gotoJump.clear();
+		  labelJump.clear();
+
 		  auto func = QualifiedValue(
 			std::make_shared<QualifiedType>( type ), fn, false );
 
@@ -90,6 +94,19 @@ JumpTable<NodeHandler> handlers = {
 		  for ( int i = 1; i < basicBlock.size() - 1; i++ )
 		  {
 			  codegen( basicBlock[ i ] );
+		  }
+
+		  if ( !gotoJump.empty() )
+		  {
+			  for ( auto firstGoto = gotoJump.begin(); firstGoto != gotoJump.end(); firstGoto++ )
+			  {
+				  auto labelName = firstGoto->first;
+				  infoList->add_msg(
+					MSG_TYPE_ERROR,
+					fmt( "use of undeclared label `", labelName, "`" ),
+					node );
+			  }
+			  HALT();
 		  }
 
 		  if ( !curr_bb_has_ret() )

@@ -210,7 +210,25 @@ int Statement::reg()
 					   return VoidType();
 				   } },
 				  { "goto", []( Json::Value &children, Json::Value &ast ) -> VoidType {
-					   UNIMPLEMENTED();
+					   auto labelName = children[ 1 ][ 1 ].asString();
+					   auto targetLable = labelJump.find( labelName );
+					   if ( targetLable != labelJump.end() )
+					   {
+						   Builder.CreateBr( targetLable->second );
+					   }
+					   else
+					   {
+						   if ( gotoJump.find( labelName ) == gotoJump.end() )
+						   {
+							   std::vector<BasicBlock *> gotolist;
+							   gotoJump[ labelName ] = gotolist;
+						   }
+						   gotoJump[ labelName ].emplace_back( Builder.GetInsertBlock() );
+					   }
+
+					   auto tempBlock = BasicBlock::Create( TheContext, "temp", static_cast<Function *>( currentFunction->get() ) );
+					   Builder.SetInsertPoint( tempBlock );
+					   return VoidType();
 				   } },
 				  { "continue", []( Json::Value &children, Json::Value &ast ) -> VoidType {
 					   if ( continueJump.empty() )
@@ -251,6 +269,104 @@ int Statement::reg()
 				  INTERNAL_ERROR();
 			  }
 		  } ) },
+		{ "selection_statement", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
+			  auto &children = node[ "children" ];
+			  auto stateType = children[ 0 ][ 1 ].asString();
+			  if ( stateType == "if" )
+			  {
+				  if ( children.size() == 7 )
+				  {
+					  auto func = currentFunction->get();
+					  auto ifEnd = BasicBlock::Create( TheContext, "if.end", static_cast<Function *>( func ) );
+					  auto ifElse = BasicBlock::Create( TheContext, "if.else", static_cast<Function *>( func ), ifEnd );
+					  auto ifThen = BasicBlock::Create( TheContext, "if.then", static_cast<Function *>( func ), ifElse );
+
+					  auto br = get<QualifiedValue>( codegen( children[ 2 ] ) )
+								  .value( children[ 2 ] )
+								  .cast( TypeView::getBoolTy(), children[ 2 ] );
+					  Builder.CreateCondBr( br.get(), ifThen, ifElse );
+
+					  Builder.SetInsertPoint( ifThen );
+					  codegen( children[ 4 ] );
+					  if ( !curr_bb_has_ret() )
+					  {
+						  Builder.CreateBr( ifEnd );
+					  }
+
+					  Builder.SetInsertPoint( ifElse );
+					  codegen( children[ 6 ] );
+					  if ( !curr_bb_has_ret() )
+					  {
+						  Builder.CreateBr( ifEnd );
+					  }
+
+					  Builder.SetInsertPoint( ifEnd );
+				  }
+				  else if ( children.size() == 5 )
+				  {
+					  auto func = currentFunction->get();
+					  auto ifEnd = BasicBlock::Create( TheContext, "if.end", static_cast<Function *>( func ) );
+					  auto ifThen = BasicBlock::Create( TheContext, "if.then", static_cast<Function *>( func ), ifEnd );
+
+					  auto br = get<QualifiedValue>( codegen( children[ 2 ] ) )
+								  .value( children[ 2 ] )
+								  .cast( TypeView::getBoolTy(), children[ 2 ] );
+					  Builder.CreateCondBr( br.get(), ifThen, ifEnd );
+
+					  Builder.SetInsertPoint( ifThen );
+					  codegen( children[ 4 ] );
+					  if ( !curr_bb_has_ret() )
+					  {
+						  Builder.CreateBr( ifEnd );
+					  }
+
+					  Builder.SetInsertPoint( ifEnd );
+				  }
+				  else
+				  {
+					  INTERNAL_ERROR();
+				  }
+
+				  return VoidType();
+			  }
+			  else if ( stateType == "switch" )
+			  {
+				  UNIMPLEMENTED();
+			  }
+			  else
+			  {
+				  INTERNAL_ERROR();
+			  }
+		  } ) },
+		{ "labeled_statement", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
+			  auto &children = node[ "children" ];
+			  auto labelType = children[ 0 ][ 1 ].asString();
+			  if ( labelType == "case" )
+			  {
+				  UNIMPLEMENTED();
+			  }
+			  else if ( labelType == "default" )
+			  {
+				  UNIMPLEMENTED();
+			  }
+			  else
+			  {
+				  auto label = BasicBlock::Create( TheContext, labelType, static_cast<Function *>( currentFunction->get() ) );
+				  labelJump[ labelType ] = label;
+
+				  auto gotoSet = gotoJump.find( labelType )->second;
+				  for ( auto bb : gotoSet )
+				  {
+					  Builder.SetInsertPoint( bb );
+					  Builder.CreateBr( label );
+				  }
+				  gotoJump.erase( labelType );
+				  Builder.SetInsertPoint( label );
+
+				  codegen( children[ 2 ] );
+			  }
+			  return VoidType();
+		  } ) }
 	};
 
 	handlers.insert( stmt.begin(), stmt.end() );
