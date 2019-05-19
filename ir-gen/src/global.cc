@@ -9,7 +9,7 @@ std::shared_ptr<QualifiedValue> currentFunction;
 std::string funcName;
 std::stack<BasicBlock *> continueJump;
 std::stack<BasicBlock *> breakJump;
-std::map<std::string, std::vector<BasicBlock *>> gotoJump;
+std::map<std::string, std::vector<std::pair<BasicBlock *, Json::Value>>> gotoJump;
 std::map<std::string, BasicBlock *> labelJump;
 MsgList *infoList;
 SymbolTable symTable = SymbolTable();

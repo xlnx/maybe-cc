@@ -98,13 +98,15 @@ JumpTable<NodeHandler> handlers = {
 
 		  if ( !gotoJump.empty() )
 		  {
-			  for ( auto firstGoto = gotoJump.begin(); firstGoto != gotoJump.end(); firstGoto++ )
+			  for ( auto &entry : gotoJump )
 			  {
-				  auto labelName = firstGoto->first;
-				  infoList->add_msg(
-					MSG_TYPE_ERROR,
-					fmt( "use of undeclared label `", labelName, "`" ),
-					node );
+				  for ( auto &goto_stmt : entry.second )
+				  {
+					  infoList->add_msg(
+						MSG_TYPE_ERROR,
+						fmt( "use of undeclared label `", entry.first, "`" ),
+						goto_stmt.second );
+				  }
 			  }
 			  HALT();
 		  }

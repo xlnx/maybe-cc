@@ -11,7 +11,7 @@ extern std::shared_ptr<QualifiedValue> currentFunction;
 extern std::string funcName;
 extern std::stack<BasicBlock *> continueJump;
 extern std::stack<BasicBlock *> breakJump;
-extern std::map<std::string, std::vector<BasicBlock *>> gotoJump;
+extern std::map<std::string, std::vector<std::pair<BasicBlock *, Json::Value>>> gotoJump;
 extern std::map<std::string, BasicBlock *> labelJump;
 extern ffi::MsgList *infoList;
 extern SymbolTable symTable;

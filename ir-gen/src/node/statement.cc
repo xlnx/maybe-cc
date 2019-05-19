@@ -214,16 +214,16 @@ int Statement::reg()
 					   auto targetLable = labelJump.find( labelName );
 					   if ( targetLable != labelJump.end() )
 					   {
-						   Builder.CreateBr( targetLable->second );
+						   if ( !curr_bb_has_ret() )
+						   {
+							   Builder.CreateBr( targetLable->second );
+						   }
 					   }
 					   else
 					   {
-						   if ( gotoJump.find( labelName ) == gotoJump.end() )
-						   {
-							   std::vector<BasicBlock *> gotolist;
-							   gotoJump[ labelName ] = gotolist;
-						   }
-						   gotoJump[ labelName ].emplace_back( Builder.GetInsertBlock() );
+						   gotoJump[ labelName ].emplace_back(
+							 Builder.GetInsertBlock(),
+							 children[ 1 ] );
 					   }
 
 					   auto tempBlock = BasicBlock::Create( TheContext, "temp", static_cast<Function *>( currentFunction->get() ) );
@@ -352,18 +352,35 @@ int Statement::reg()
 			  else
 			  {
 				  auto label = BasicBlock::Create( TheContext, labelType, static_cast<Function *>( currentFunction->get() ) );
-				  Builder.CreateBr( label );
-				  labelJump[ labelType ] = label;
-
-				  auto gotoSet = gotoJump.find( labelType )->second;
-				  for ( auto bb : gotoSet )
+				  if ( !curr_bb_has_ret() )
 				  {
-					  Builder.SetInsertPoint( bb );
 					  Builder.CreateBr( label );
 				  }
-				  gotoJump.erase( labelType );
-				  Builder.SetInsertPoint( label );
 
+				  if ( labelJump.find( labelType ) != labelJump.end() )
+				  {
+					  infoList->add_msg(
+						MSG_TYPE_ERROR,
+						fmt( "redefinition of label `", labelType, "`" ),
+						node );
+					  HALT();
+				  }
+				  labelJump[ labelType ] = label;
+
+				  if ( gotoJump.find( labelType ) != gotoJump.end() )
+				  {
+					  for ( auto &entry : gotoJump[ labelType ] )
+					  {
+						  Builder.SetInsertPoint( entry.first );
+						  if ( !curr_bb_has_ret() )
+						  {
+							  Builder.CreateBr( label );
+						  }
+					  }
+					  gotoJump.erase( labelType );
+				  }
+
+				  Builder.SetInsertPoint( label );
 				  codegen( children[ 2 ] );
 			  }
 			  return VoidType();
