@@ -110,7 +110,7 @@ lang! {
     TYPE_NAME => r"$^$^",
     FLOATING_POINT => r#"\d+[Ee][\+-]?\d+[fFlL]?\b|\d*\.\d+[fFlL]?\b|\d*\.\d+[Ee][\+-]?\d+[fFlL]?\b|\d+\.\d*[Ee][\+-]?\d+[fFlL]?\b|\d+\.\d*[fFlL]?\b"#,
     INTEGER => r#"0[xX][0-9A-Fa-f]+[uUlL]*\b|\d+[uUlL]*\b"#,
-    CHAR => r#"[a-zA-Z_]?'(:?[^\\']|\\.)*'"#,
+    CHAR => r#"([a-zA-Z_]?'(:?[^\\']|\\.)*')"#,
     STRING_LITERAL => r#"([a-zA-Z_]?"(:?[^\\"]|\\.)*")"#,
     IDENTIFIER => r"[a-zA-Z_]\w*\b"
         => |tok, ctrl| {
@@ -370,8 +370,8 @@ lang! {
         "enum" IDENTIFIER
     ],
     enumerator_list => [
-        enumerator,
-        enumerator_list "," enumerator
+        enumerator |@flatten|,
+        enumerator_list "," enumerator |@flatten|
     ],
     enumerator => [
         IDENTIFIER,

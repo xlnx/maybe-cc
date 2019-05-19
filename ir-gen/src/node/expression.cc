@@ -589,7 +589,20 @@ int Expression::reg()
 
 						   return QualifiedValue( type, ConstantFP::get( type->type, num ) );
 					   } },
+					  { "CHAR", []( const char *val, Json::Value &node ) -> QualifiedValue {
+						   TODO( "unimplemented" );
+						   std::string esc_str = val;
+						   esc_str = esc_str.substr( esc_str.find_first_of( '"' ) + 1, esc_str.length() - 2 );
+
+						   auto &type = TypeView::getCharTy( true );
+
+						   return QualifiedValue(
+							 type,
+							 Constant::getIntegerValue( type->type, APInt( 8, 0, true ) ),
+							 false );
+					   } },
 					  { "STRING_LITERAL", []( const char *val, Json::Value &node ) -> QualifiedValue {
+						   TODO( "unimplemented" );
 						   std::string esc_str = val;
 						   esc_str = esc_str.substr( esc_str.find_first_of( '"' ) + 1, esc_str.length() - 2 );
 

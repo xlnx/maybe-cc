@@ -6,7 +6,7 @@ JumpTable<NodeHandler> handlers = {
 	{ "function_definition", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
 		  Json::Value &children = node[ "children" ];
 
-		  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
+		  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ], true ) );
 
 		  if ( declspec.has_attribute( SC_TYPEDEF ) )
 		  {
@@ -152,6 +152,7 @@ static auto const volatile __decl = Declaration::reg();
 static auto const volatile __stmt = Statement::reg();
 static auto const volatile __expr = Expression::reg();
 static auto const volatile __init = Initializer::reg();
+static auto const volatile __enum = Enumerate::reg();
 
 std::string indent( int num )
 {

@@ -280,6 +280,7 @@ public:
 		}
 		for ( auto i = idx; i != list.size(); ++i )
 		{  // if typedef const/volatile array
+			// cloning incomplete type is impossible so it's safe.
 			auto item = list[ i ]->clone();
 			if ( i == idx )
 			{

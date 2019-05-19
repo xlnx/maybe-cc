@@ -11,5 +11,6 @@
 #include "arrayType.h"
 #include "structType.h"
 #include "unionType.h"
+#include "enumType.h"
 
 #include "declarationSpecifier.h"

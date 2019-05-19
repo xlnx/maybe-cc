@@ -29,6 +29,12 @@ inline std::ostream &operator<<( std::ostream &os, const InitList &list )
 	return os;
 }
 
+struct EnumItem
+{
+	std::string name;
+	QualifiedValue val;
+};
+
 using AstType = variant<
   int,
   QualifiedValue,
@@ -38,11 +44,13 @@ using AstType = variant<
   QualifiedTypeBuilder *,
   Option<QualifiedValue>,
   InitItem,
+  EnumItem,
   VoidType>;
 
 using ArgsType = variant<
   QualifiedTypeBuilder *,
   TypeView,
+  bool,
   VoidType>;
 
 template <typename I, typename O>

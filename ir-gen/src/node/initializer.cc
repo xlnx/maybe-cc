@@ -561,8 +561,6 @@ int Initializer::reg()
 		{ "declaration", pack_fn<VoidType, VoidType>( []( Json::Value &node, VoidType const & ) -> VoidType {
 			  auto &children = node[ "children" ];
 
-			  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ] ) );
-
 			  int child_cnt = 0;
 
 			  for ( int i = 1; i < children.size(); ++i )
@@ -571,7 +569,25 @@ int Initializer::reg()
 				  if ( child.isObject() )
 				  {
 					  child_cnt++;
+				  }
+			  }
 
+			  auto declspec = get<DeclarationSpecifiers>( codegen( children[ 0 ], child_cnt != 0 ) );
+
+			  if ( child_cnt == 0 )
+			  {
+				  auto &type = declspec.get_type();
+				  if ( type.is_none() || !type.unwrap().is<mty::Structural>() || !type.unwrap().is<mty::Enum>() )
+				  {
+					  infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything", node );
+				  }
+			  }
+
+			  for ( int i = 1; i < children.size(); ++i )
+			  {
+				  auto &child = children[ i ];
+				  if ( child.isObject() )
+				  {
 					  auto builder = declspec.into_type_builder( children[ 0 ] );
 					  auto &child = children[ i ];
 
@@ -787,15 +803,6 @@ int Initializer::reg()
 							  }
 						  }
 					  }
-				  }
-			  }
-
-			  if ( child_cnt == 0 )
-			  {
-				  auto &type = declspec.get_type();
-				  if ( type.is_none() || !type.unwrap().is<mty::Structural>() )
-				  {
-					  infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything", node );
 				  }
 			  }
 

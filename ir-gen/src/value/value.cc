@@ -174,6 +174,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 					  MSG_TYPE_WARNING,
 					  fmt( "incompatible pointer types casting to `", dst, "` from `", this->type, "`" ),
 					  node );
+					this->val = Builder.CreatePointerCast( this->val, dst->type );
 				}
 				else if ( !dest.is_qualifiers_compatible( type ) )
 				{
