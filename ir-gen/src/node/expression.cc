@@ -133,12 +133,11 @@ static QualifiedValue sub( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value
 	}
 }
 
-static QualifiedValue handle_binary_expr( Json::Value &node, VoidType const &_ )
+static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &node )
 {
 	auto &children = node[ "children" ];
-	auto lhs = get<QualifiedValue>( codegen( children[ 0 ], _ ) ).value( children[ 0 ] );
-	auto rhs = get<QualifiedValue>( codegen( children[ 2 ], _ ) ).value( children[ 2 ] );
-	auto op = children[ 1 ][ 1 ].asCString();
+	lhs.value( children[ 0 ] );
+	rhs.value( children[ 2 ] );
 
 	static JumpTable<QualifiedValue( QualifiedValue & lhs, QualifiedValue & rhs, Json::Value & ast )> __ = {
 		{ "*", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
@@ -355,10 +354,14 @@ int Expression::reg()
 		{ "assignment_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
 			  auto &children = node[ "children" ];
 			  auto lhs = get<QualifiedValue>( codegen( children[ 0 ] ) );
+			  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) ).value( children[ 2 ] );
+			  auto lhs_a = lhs;
+			  auto op = children[ 1 ][ 1 ].asString();
+			  auto idx = op.find_first_of( '=' );
+			  if ( idx ) op[ idx ] = '\0';
+			  auto val = idx ? handle_binary_expr( op.c_str(), lhs_a, rhs, node ) : rhs;
 
-			  return lhs.store( get<QualifiedValue>( codegen( children[ 2 ] ) )
-								  .value( children[ 2 ] ),
-								children[ 0 ], children[ 2 ] );
+			  return lhs.store( val, children[ 0 ], children[ 2 ] );
 		  } ) },
 		{ "cast_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
 			  auto &children = node[ "children" ];
@@ -634,7 +637,12 @@ int Expression::reg()
 			  }
 		  } ) },
 
-		{ "binary_expression", pack_fn<VoidType, QualifiedValue>( handle_binary_expr ) }
+		{ "binary_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
+			  auto &children = node[ "children" ];
+			  auto lhs = get<QualifiedValue>( codegen( children[ 0 ] ) );
+			  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) );
+			  return handle_binary_expr( children[ 1 ][ 1 ].asCString(), lhs, rhs, node );
+		  } ) }
 	};
 
 	handlers.insert( expr.begin(), expr.end() );
