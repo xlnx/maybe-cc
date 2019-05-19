@@ -418,14 +418,18 @@ int Expression::reg()
 						   auto rhs = QualifiedValue(
 							 int_ty,
 							 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
-						   return add( val.value( children[ 1 ] ), rhs, node );
+						   auto lhs = val;
+						   lhs = add( lhs.value( children[ 1 ] ), rhs, node );
+						   return val.store( lhs, children[ 1 ], children[ 1 ] );
 					   } },
 					  { "--", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 						   auto &int_ty = TypeView::getIntTy( true );
 						   auto rhs = QualifiedValue(
 							 int_ty,
 							 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
-						   return sub( val.value( children[ 1 ] ), rhs, node );
+						   auto lhs = val;
+						   lhs = sub( lhs.value( children[ 1 ] ), rhs, node );
+						   return val.store( lhs, children[ 1 ], children[ 1 ] );
 					   } },
 					  { "sizeof", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 						   return size_of_type( val.get_type().get(), children[ 1 ] );
@@ -460,22 +464,26 @@ int Expression::reg()
 					   return val.value( children[ 0 ] ).offset( off.value( children[ 2 ] ).get(), node );
 				   } },
 				  { "++", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
-					   auto prev = val;
 					   auto &int_ty = TypeView::getIntTy( true );
 					   auto rhs = QualifiedValue(
 						 int_ty,
 						 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
-					   add( prev, rhs, node );
-					   return prev.value( children[ 0 ] );
+					   auto lhs = val;
+					   auto prev = lhs.value( children[ 0 ] );
+					   lhs = add( lhs, rhs, node );
+					   val.store( lhs, children[ 0 ], children[ 0 ] );
+					   return prev;
 				   } },
 				  { "--", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
-					   auto prev = val;
 					   auto &int_ty = TypeView::getIntTy( true );
 					   auto rhs = QualifiedValue(
 						 int_ty,
 						 Constant::getIntegerValue( int_ty->type, APInt( 32, 1, true ) ) );
-					   sub( prev, rhs, node );
-					   return prev.value( children[ 0 ] );
+					   auto lhs = val;
+					   auto prev = lhs.value( children[ 0 ] );
+					   lhs = sub( lhs, rhs, node );
+					   val.store( lhs, children[ 0 ], children[ 0 ] );
+					   return prev;
 				   } },
 				  { "->", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 					   if ( auto struct_ty = val.get_type()->as<mty::Derefable>() )
