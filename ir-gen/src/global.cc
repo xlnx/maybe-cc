@@ -4,6 +4,7 @@
 LLVMContext TheContext;
 IRBuilder<> Builder( TheContext );
 std::unique_ptr<Module> TheModule;
+std::unique_ptr<DataLayout> TheDataLayout;
 std::shared_ptr<QualifiedValue> currentFunction;
 std::string funcName;
 std::stack<BasicBlock *> continueJump;

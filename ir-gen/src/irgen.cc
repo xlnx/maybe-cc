@@ -137,6 +137,7 @@ JumpTable<NodeHandler> handlers = {
 		  if ( verifyFunction( *fn, &fn_err_stream ) )
 		  {
 			  fn_err_stream.flush();
+			  TheModule->print( errs(), nullptr );
 			  INTERNAL_ERROR( fmt( "\nLLVM Verify Function Failed:\n", fn_err ) );
 		  }
 
@@ -199,6 +200,7 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 
 	// init
 	TheModule = make_unique<Module>( "asd", TheContext );
+	TheDataLayout = make_unique<DataLayout>( TheModule.get() );
 	currentFunction = nullptr;
 	funcName = "";
 	while ( !continueJump.empty() ) continueJump.pop();
@@ -264,6 +266,7 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	if ( verifyModule( *TheModule, &module_err_stream ) )
 	{
 		module_err_stream.flush();
+		TheModule->print( errs(), nullptr );
 		INTERNAL_ERROR( fmt( "\nLLVM Verify Module Failed:\n", module_err ) );
 	}
 

@@ -216,6 +216,7 @@ public:
 	friend std::ostream &operator<<( std::ostream &os, const TypeView &view );
 
 public:
+	static TypeView const &getVoidPtrTy();
 	static TypeView const &getBoolTy();
 	static TypeView const &getCharTy( bool is_signed );
 	static TypeView const &getShortTy( bool is_signed );

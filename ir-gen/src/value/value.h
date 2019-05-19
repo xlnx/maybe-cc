@@ -37,7 +37,85 @@ public:
 	{
 		return !is_lvalue;
 	}
+	QualifiedValue &store( QualifiedValue &val, Json::Value &lhs, Json::Value &rhs )
+	{
+		if ( !is_lvalue || val.is_lvalue ) INTERNAL_ERROR();
 
+		if ( type->is<mty::Address>() || type->is<mty::Void>() )
+		{
+			infoList->add_msg( MSG_TYPE_ERROR,
+							   fmt( "object of type `", type, "` is not assignable" ),
+							   lhs );
+			HALT();
+		}
+		if ( type->is_const )
+		{
+			infoList->add_msg( MSG_TYPE_ERROR,
+							   fmt( "cannot assign to const-qualified type `", type, "`" ),
+							   lhs );
+		}
+
+		this->deref( lhs );
+
+		Builder.CreateStore( val.value( rhs ).cast( type, rhs ).get(), this->val );
+
+		return *this;
+	}
+	QualifiedValue &get_member( std::string const &member, Json::Value &ast )
+	{
+		if ( !is_lvalue )
+		{
+			UNIMPLEMENTED( "function returning a struct is not implemented yet" );
+		}
+
+		auto &children = ast[ "children" ];
+		if ( !type->is<mty::Structural>() )
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "member reference base type `", type, "` is not a structure or union" ),
+			  children[ 0 ] );
+			HALT();
+		}
+		if ( auto struct_obj = type->as<mty::Struct>() )
+		{
+			auto &mem = struct_obj->get_member( member, children[ 2 ] );
+			static const auto zero = ConstantInt::get( TheContext, APInt( 64, 0, true ) );
+			static Value *idx[ 2 ] = { zero, nullptr };
+			idx[ 1 ] = mem.second;
+			auto builder = DeclarationSpecifiers()
+							 .add_type( mem.first, ast );
+			if ( type->is_const ) builder.add_attribute( "const", ast );
+			if ( type->is_volatile ) builder.add_attribute( "volatile", ast );
+
+			this->type = TypeView( std::make_shared<QualifiedType>(
+			  builder
+				.into_type_builder( ast )
+				.build() ) );
+			this->val = Builder.CreateGEP( this->val, idx );
+		}
+		else if ( auto union_obj = type->as<mty::Union>() )
+		{
+			auto &mem = union_obj->get_member( member, children[ 2 ] );
+			auto builder = DeclarationSpecifiers()
+							 .add_type( mem, ast );
+			if ( this->get_type()->is_const ) builder.add_attribute( "const", ast );
+			if ( this->get_type()->is_volatile ) builder.add_attribute( "volatile", ast );
+
+			this->type = TypeView( std::make_shared<QualifiedType>(
+			  builder
+				.into_type_builder( ast )
+				.build() ) );
+
+			this->val = Builder.CreateBitCast( this->get(), PointerType::getUnqual( mem->type ) );
+		}
+		else
+		{
+			INTERNAL_ERROR();
+		}
+
+		return *this;
+	}
 	QualifiedValue &value( Json::Value &ast )  // cast to rvalue
 	{
 		if ( is_lvalue )

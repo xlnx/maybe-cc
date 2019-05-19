@@ -18,6 +18,17 @@ struct InitItem
 
 using InitList = std::vector<InitItem>;
 
+inline std::ostream &operator<<( std::ostream &os, const InitList &list )
+{
+	os << "{ ";
+	for ( auto &e : list )
+	{
+		os << ( e.value.is_some() ? "e " : "[] " );
+	}
+	os << "}";
+	return os;
+}
+
 using AstType = variant<
   int,
   QualifiedValue,

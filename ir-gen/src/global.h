@@ -6,6 +6,7 @@
 extern LLVMContext TheContext;
 extern IRBuilder<> Builder;
 extern std::unique_ptr<Module> TheModule;
+extern std::unique_ptr<DataLayout> TheDataLayout;
 extern std::shared_ptr<QualifiedValue> currentFunction;
 extern std::string funcName;
 extern std::stack<BasicBlock *> continueJump;

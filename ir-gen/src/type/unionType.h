@@ -3,13 +3,15 @@
 #include "predef.h"
 #include "type.h"
 
+extern std::unique_ptr<DataLayout> TheDataLayout;
+
 namespace mty
 {
 struct Union : Structural
 {
 	static constexpr auto self_type = TypeName::StructType;
 
-	Option<QualifiedType> first_comp;
+	Option<QualifiedDecl> first_comp;
 	std::map<std::string, QualifiedType> comps;
 	Option<std::string> name;
 
@@ -36,7 +38,7 @@ struct Union : Structural
 
 		if ( comps.size() > 0 )
 		{
-			first_comp = comps[ 0 ].type;
+			first_comp = comps[ 0 ];
 		}
 
 		static_cast<llvm::StructType *>( this->type )->setBody( map_comp( comps ) );
@@ -104,16 +106,16 @@ private:
 	static std::vector<Type *> map_comp( const std::vector<QualifiedDecl> &comps )
 	{
 		std::vector<Type *> new_args;
-		unsigned max_bit_size = 0;
+		unsigned max_bytes_size = 0;
 		Type *long_ty = nullptr;
 
 		for ( auto comp : comps )
 		{
-			if ( auto bit_size = comp.type->type->getPrimitiveSizeInBits() )
+			if ( auto bytes_size = TheDataLayout->getTypeAllocSize( comp.type->type ) )
 			{
-				if ( bit_size > max_bit_size )
+				if ( bytes_size > max_bytes_size )
 				{
-					max_bit_size = bit_size;
+					max_bytes_size = bytes_size;
 					long_ty = comp.type->type;
 				}
 			}

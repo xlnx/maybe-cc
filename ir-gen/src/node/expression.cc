@@ -10,12 +10,11 @@ static QualifiedValue size_of_type( const mty::Qualified *type, Json::Value &ast
 		  fmt( "invalid application of `sizeof` to an incomplete type" ), ast );
 		HALT();
 	}
-	auto bits = type->type->isVoidTy() ? 8 : type->type->getPrimitiveSizeInBits();
-	if ( ( bits & 0x7 ) != 0 ) TODO( "handle bits" );
+	auto bytes = type->type->isVoidTy() ? 1 : TheDataLayout->getTypeAllocSize( type->type );
 	return QualifiedValue(
 	  value_type,
 	  Constant::getIntegerValue(
-		value_type->type, APInt( value_type->as<mty::Integer>()->bits, uint64_t( bits / 8 ), false ) ) );
+		value_type->type, APInt( value_type->as<mty::Integer>()->bits, uint64_t( bytes ), false ) ) );
 }
 
 static QualifiedValue pos( QualifiedValue &val, Json::Value &ast )
@@ -131,62 +130,6 @@ static QualifiedValue sub( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value
 		{
 			return QualifiedValue( type, Builder.CreateFSub( lhs.get(), rhs.get() ) );
 		}
-	}
-}
-
-static QualifiedValue get_member( QualifiedValue &obj, Json::Value &ast )
-{
-	if ( obj.is_rvalue() )
-	{
-		UNIMPLEMENTED( "function returning a struct is not implemented yet" );
-	}
-
-	auto &children = ast[ "children" ];
-	auto member = children[ 2 ][ 1 ].asString();
-	if ( !obj.get_type()->is<mty::Structural>() )
-	{
-		infoList->add_msg(
-		  MSG_TYPE_ERROR,
-		  fmt( "member reference base type `", obj.get_type(), "` is not a structure or union" ),
-		  children[ 0 ] );
-		HALT();
-	}
-	if ( auto struct_obj = obj.get_type()->as<mty::Struct>() )
-	{
-		auto &mem = struct_obj->get_member( member, children[ 2 ] );
-		static const auto zero = ConstantInt::get( TheContext, APInt( 64, 0, true ) );
-		static Value *idx[ 2 ] = { zero, nullptr };
-		idx[ 1 ] = mem.second;
-		auto builder = DeclarationSpecifiers()
-						 .add_type( mem.first, ast );
-		if ( obj.get_type()->is_const ) builder.add_attribute( "const", ast );
-		if ( obj.get_type()->is_volatile ) builder.add_attribute( "volatile", ast );
-
-		return QualifiedValue(
-		  TypeView( std::make_shared<QualifiedType>(
-			builder
-			  .into_type_builder( ast )
-			  .build() ) ),
-		  Builder.CreateGEP( obj.get(), idx ), true );
-	}
-	else if ( auto union_obj = obj.get_type()->as<mty::Union>() )
-	{
-		auto &mem = union_obj->get_member( member, children[ 2 ] );
-		auto builder = DeclarationSpecifiers()
-						 .add_type( mem, ast );
-		if ( obj.get_type()->is_const ) builder.add_attribute( "const", ast );
-		if ( obj.get_type()->is_volatile ) builder.add_attribute( "volatile", ast );
-
-		return QualifiedValue(
-		  TypeView( std::make_shared<QualifiedType>(
-			builder
-			  .into_type_builder( ast )
-			  .build() ) ),
-		  Builder.CreateBitCast( obj.get(), PointerType::getUnqual( mem->type ) ), true );
-	}
-	else
-	{
-		INTERNAL_ERROR();
 	}
 }
 
@@ -412,28 +355,10 @@ int Expression::reg()
 		{ "assignment_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
 			  auto &children = node[ "children" ];
 			  auto lhs = get<QualifiedValue>( codegen( children[ 0 ] ) );
-			  auto type = lhs.get_type();
 
-			  if ( type->is<mty::Address>() || type->is<mty::Void>() )
-			  {
-				  infoList->add_msg( MSG_TYPE_ERROR,
-									 fmt( "object of type `", type, "` is not assignable" ),
-									 children[ 0 ] );
-				  HALT();
-			  }
-			  if ( type->is_const )
-			  {
-				  infoList->add_msg( MSG_TYPE_ERROR,
-									 fmt( "cannot assign to const-qualified type `", type, "`" ),
-									 children[ 0 ] );
-			  }
-			  lhs = lhs.deref( children[ 0 ] );
-
-			  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) )
-						   .value( children[ 2 ] )
-						   .cast( type, children[ 2 ] );
-
-			  return QualifiedValue( lhs.get_type(), Builder.CreateStore( rhs.get(), lhs.get() ) );
+			  return lhs.store( get<QualifiedValue>( codegen( children[ 2 ] ) )
+								  .value( children[ 2 ] ),
+								children[ 0 ], children[ 2 ] );
 		  } ) },
 		{ "cast_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
 			  auto &children = node[ "children" ];
@@ -454,8 +379,24 @@ int Expression::reg()
 						   return val.value( children[ 1 ] ).deref( ast );
 					   } },
 					  { "&", []( Json::Value &children, QualifiedValue &val, Json::Value &ast ) -> QualifiedValue {
-						   UNIMPLEMENTED();
-						   //    return val.value( children[ 1 ] ).deref( ast );
+						   if ( val.is_rvalue() )
+						   {
+							   infoList->add_msg(
+								 MSG_TYPE_ERROR,
+								 fmt( "cannot take the address of an rvalue of type `", val.get_type(), "`" ),
+								 ast );
+							   HALT();
+						   }
+						   auto builder = DeclarationSpecifiers()
+											.add_type( val.get_type().into_type(), ast )
+											.into_type_builder( ast );
+						   return QualifiedValue(
+							 TypeView(
+							   std::make_shared<QualifiedType>(
+								 builder
+								   .add_level( std::make_shared<mty::Pointer>( builder.get_type()->type ) )
+								   .build() ) ),
+							 val.get() );
 					   } },
 					  { "+", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 						   return pos( val.value( children[ 1 ] ), node );
@@ -536,7 +477,9 @@ int Expression::reg()
 				  { "->", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 					   if ( auto struct_ty = val.get_type()->as<mty::Derefable>() )
 					   {
-						   return get_member( val.value( children[ 1 ] ).deref( children[ 1 ] ), node );
+						   return val.value( children[ 1 ] )
+							 .deref( children[ 1 ] )
+							 .get_member( node[ "children" ][ 2 ][ 1 ].asString(), node );
 					   }
 					   else
 					   {
@@ -548,7 +491,7 @@ int Expression::reg()
 					   }
 				   } },
 				  { ".", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
-					   return get_member( val, node );
+					   return val.get_member( node[ "children" ][ 2 ][ 1 ].asString(), node );
 				   } },
 				  { "(", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
 					   std::vector<QualifiedValue> args;

@@ -1,6 +1,21 @@
 #include "type.h"
 #include "def.h"
 
+TypeView const &TypeView::getVoidPtrTy()
+{
+	static auto s_v = ( [] {
+		Json::Value ast;
+		return TypeView(
+		  std::make_shared<QualifiedType>(
+			DeclarationSpecifiers()
+			  .add_type( QualifiedType( std::make_shared<mty::Void>() ), ast )
+			  .into_type_builder( ast )
+			  .add_level( std::make_shared<mty::Pointer>( mty::Void().type ) )
+			  .build() ) );
+	} )();
+
+	return s_v;
+}
 TypeView const &TypeView::getBoolTy()
 {
 	static auto s_ty = std::make_shared<QualifiedType>( std::make_shared<mty::Integer>( 1, true ) );

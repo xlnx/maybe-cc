@@ -38,20 +38,13 @@ struct Struct : Structural
 		unsigned index = 0;
 		for ( auto &comp : comps )
 		{
-			if ( comp.name.is_some() )
-			{
-				auto ind = static_cast<ConstantInt *>(
-				  Constant::getIntegerValue(
-					TypeView::getIntTy( false )->type,
-					APInt( 32, uint64_t( index ), false ) ) );
-				this->comps.emplace(
-				  comp.name.unwrap(),
-				  std::make_pair( comp.type, ind ) );
-			}
-			else
-			{
-				infoList->add_msg( MSG_TYPE_WARNING, "declaration does not declare anything" );
-			}
+			auto ind = static_cast<ConstantInt *>(
+			  Constant::getIntegerValue(
+				TypeView::getIntTy( false )->type,
+				APInt( 32, uint64_t( index++ ), false ) ) );
+			this->comps.emplace(
+			  comp.name.unwrap(),
+			  std::make_pair( comp.type, ind ) );
 		}
 	}
 
