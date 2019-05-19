@@ -19,7 +19,8 @@ enum TypeName
 	PointerType,
 	FunctionType,
 	ArrayType,
-	StructType
+	StructType,
+	EnumType
 };
 
 struct Qualified

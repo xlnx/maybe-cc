@@ -1,6 +1,6 @@
 #include "declaration.h"
 
-static DeclarationSpecifiers handle_decl( Json::Value &node )
+static DeclarationSpecifiers handle_decl( Json::Value &node, bool has_def )
 {
 	auto &children = node[ "children" ];
 
@@ -10,13 +10,20 @@ static DeclarationSpecifiers handle_decl( Json::Value &node )
 	for ( int i = 0; i < children.size(); ++i )
 	{
 		auto &child = children[ i ];
-		if ( child.isObject() )
-		{
-			declspec.add_type( get<QualifiedType>( codegen( child ) ), child );
-		}
-		else
+		if ( !child.isObject() )
 		{
 			declspec.add_attribute( child[ 1 ].asCString(), child );
+		}
+	}
+
+	bool curr_scope = !declspec.has_attribute( STORAGE_SPECIFIER ) && !has_def;
+
+	for ( int i = 0; i < children.size(); ++i )
+	{
+		auto &child = children[ i ];
+		if ( child.isObject() )
+		{
+			declspec.add_type( get<QualifiedType>( codegen( child, curr_scope ) ), child );
 		}
 	}
 
@@ -255,13 +262,13 @@ int Declaration::reg()
 			  return VoidType();
 		  } ) },
 		/* VERIFIED -> DeclarationSpecifiers */
-		{ "declaration_specifiers_i", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
-			  return handle_decl( node );
+		{ "declaration_specifiers_i", pack_fn<bool, DeclarationSpecifiers>( []( Json::Value &node, bool const &has_decl ) -> DeclarationSpecifiers {
+			  return handle_decl( node, has_decl );
 		  } ) },
 		{ "declaration_specifiers_p", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
-			  return handle_decl( node );
+			  return handle_decl( node, true );
 		  } ) },
-		{ "struct_or_union_specifier", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
+		{ "struct_or_union_specifier", pack_fn<bool, QualifiedType>( []( Json::Value &node, bool const &curr_scope ) -> QualifiedType {
 			  auto &children = node[ "children" ];
 
 			  auto struct_or_union = *children[ 0 ][ 1 ].asCString();
@@ -270,21 +277,10 @@ int Declaration::reg()
 				  if ( children.size() < 3 )
 				  {
 					  auto name = children[ 1 ][ 1 ].asString();
-					  auto fullName = "struct." + name;
-
-					  if ( auto sym = symTable.find( fullName ) )
-					  {
-						  if ( sym->is_type() ) return sym->as_type();
-						  INTERNAL_ERROR();
-					  }
-					  else
-					  {
-						  return QualifiedType( std::make_shared<mty::Struct>( name ) );
-					  }
+					  return forward_decl<mty::Struct>( name, "struct." + name, curr_scope, node );
 				  }
 				  else
 				  {
-					  Json::Value *struct_decl;
 					  auto la = children[ 1 ][ 0 ].asString();
 					  auto has_id = la == "IDENTIFIER";
 
@@ -302,7 +298,7 @@ int Declaration::reg()
 						  auto name = children[ 1 ][ 1 ].asString();
 						  auto fullName = "struct." + name;
 
-						  symTable.insert( fullName, type, children[ 1 ] );
+						  fix_forward_decl( fullName, type );
 					  }
 
 					  return type;
@@ -313,21 +309,10 @@ int Declaration::reg()
 				  if ( children.size() < 3 )
 				  {
 					  auto name = children[ 1 ][ 1 ].asString();
-					  auto fullName = "union." + name;
-
-					  if ( auto sym = symTable.find( fullName ) )
-					  {
-						  if ( sym->is_type() ) return sym->as_type();
-						  INTERNAL_ERROR();
-					  }
-					  else
-					  {
-						  return QualifiedType( std::make_shared<mty::Union>( name ) );
-					  }
+					  return forward_decl<mty::Union>( name, "union." + name, curr_scope, node );
 				  }
 				  else
 				  {
-					  Json::Value *struct_decl;
 					  auto la = children[ 1 ][ 0 ].asString();
 					  auto has_id = la == "IDENTIFIER";
 
@@ -345,7 +330,7 @@ int Declaration::reg()
 						  auto name = children[ 1 ][ 1 ].asString();
 						  auto fullName = "union." + name;
 
-						  symTable.insert( fullName, type, children[ 1 ] );
+						  fix_forward_decl( fullName, type );
 					  }
 
 					  return type;
@@ -359,7 +344,7 @@ int Declaration::reg()
 		  } ) },
 		/* VERIFIED -> DeclarationSpecifiers */
 		{ "specifier_qualifier_list_i", pack_fn<VoidType, DeclarationSpecifiers>( []( Json::Value &node, VoidType const & ) -> DeclarationSpecifiers {
-			  return handle_decl( node );
+			  return handle_decl( node, true );
 		  } ) },
 		{ "type_name", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
 			  auto &children = node[ "children" ];
@@ -374,7 +359,7 @@ int Declaration::reg()
 				  return builder.build();
 			  }
 		  } ) },
-		{ "userdefined_type_name", pack_fn<VoidType, QualifiedType>( []( Json::Value &node, VoidType const & ) -> QualifiedType {
+		{ "userdefined_type_name", pack_fn<bool, QualifiedType>( []( Json::Value &node, bool const & ) -> QualifiedType {
 			  auto name = node[ "children" ][ 0 ][ 1 ].asString();
 			  if ( auto sym = symTable.find( name ) )
 			  {

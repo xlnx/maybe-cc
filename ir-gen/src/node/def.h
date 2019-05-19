@@ -5,3 +5,4 @@
 #include "statement.h"
 #include "expression.h"
 #include "initializer.h"
+#include "enumerate.h"
