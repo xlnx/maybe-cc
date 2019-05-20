@@ -181,6 +181,7 @@ public:
 		{
 			deref( children[ 0 ] ).value( children[ 0 ] );
 		}
+
 		if ( auto fn = type->as<mty::Function>() )
 		{
 			if ( fn->is_va_args && args.size() < fn->args.size() ||
@@ -199,9 +200,11 @@ public:
 			for ( auto i = 0; i != args.size(); ++i )
 			{
 				if ( args[ i ].is_lvalue ) INTERNAL_ERROR();
+
 				args_val.emplace_back(
 				  i < fn->args.size() ? args[ i ].cast(
-												   TypeView( std::make_shared<QualifiedType>( fn->args[ i ].type ) ),
+												   TypeView( std::make_shared<QualifiedType>(
+													 fn->args[ i ].type ) ),
 												   children[ i + 2 ] )
 										  .get()
 									  : args[ i ].get() );

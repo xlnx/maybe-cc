@@ -509,6 +509,7 @@ int Expression::reg()
 								   .value( children[ i ] ) );
 						   }
 					   }
+
 					   return val.call( args, node );
 				   } }
 			  };
@@ -623,7 +624,7 @@ int Expression::reg()
 										 .build();
 						   return QualifiedValue(
 							 std::make_shared<QualifiedType>( type ),
-							 Builder.CreateGlobalStringPtr( esc_str ),
+							 Builder.CreateGlobalString( esc_str ),
 							 false );
 					   } }
 				  };
