@@ -136,6 +136,7 @@ static QualifiedValue sub( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value
 static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &node )
 {
 	auto &children = node[ "children" ];
+
 	lhs.value( children[ 0 ] );
 	rhs.value( children[ 2 ] );
 
@@ -328,13 +329,6 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 		{ "|", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 			 QualifiedValue::cast_binary_expr( lhs, rhs, ast, false );
 			 return QualifiedValue( lhs.get_type(), Builder.CreateOr( lhs.get(), rhs.get() ) );
-		 } },
-
-		{ "&&", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-			 UNIMPLEMENTED();
-		 } },
-		{ "||", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
-			 UNIMPLEMENTED();
 		 } }
 	};
 
@@ -647,10 +641,113 @@ int Expression::reg()
 
 		{ "binary_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
 			  auto &children = node[ "children" ];
+
+			  auto op = children[ 1 ][ 1 ].asCString();
+			  if ( !strcmp( op, "&&" ) )
+			  {
+				  auto lhs = get<QualifiedValue>( codegen( children[ 0 ] ) )
+							   .value( children[ 0 ] )
+							   .cast(
+								 TypeView::getBoolTy(),
+								 children[ 0 ] );
+
+				  auto fn = static_cast<Function *>(
+					currentFunction->get() );
+				  auto andEnd = BasicBlock::Create( TheContext, "and.end", fn );
+				  auto andNext = BasicBlock::Create( TheContext, "and.next", fn, andEnd );
+
+				  Builder.CreateCondBr( lhs.get(), andNext, andEnd );
+				  auto bb = Builder.GetInsertBlock();
+
+				  Builder.SetInsertPoint( andNext );
+				  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) )
+							   .value( children[ 2 ] )
+							   .cast(
+								 TypeView::getBoolTy(),
+								 children[ 2 ] );
+				  Builder.CreateBr( andEnd );
+				  Builder.SetInsertPoint( andEnd );
+
+				  auto phi = Builder.CreatePHI( TypeView::getBoolTy()->type, 2, "phi" );
+				  phi->addIncoming( lhs.get(), bb );
+				  phi->addIncoming( rhs.get(), andNext );
+
+				  return QualifiedValue( TypeView::getBoolTy(), phi );
+			  }
+			  else if ( !strcmp( op, "||" ) )
+			  {
+				  auto lhs = get<QualifiedValue>( codegen( children[ 0 ] ) )
+							   .value( children[ 0 ] )
+							   .cast(
+								 TypeView::getBoolTy(),
+								 children[ 0 ] );
+
+				  auto fn = static_cast<Function *>(
+					currentFunction->get() );
+				  auto orEnd = BasicBlock::Create( TheContext, "or.end", fn );
+				  auto orNext = BasicBlock::Create( TheContext, "or.next", fn, orEnd );
+
+				  Builder.CreateCondBr( lhs.get(), orEnd, orNext );
+				  auto bb = Builder.GetInsertBlock();
+
+				  Builder.SetInsertPoint( orNext );
+				  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) )
+							   .value( children[ 2 ] )
+							   .cast(
+								 TypeView::getBoolTy(),
+								 children[ 2 ] );
+				  Builder.CreateBr( orEnd );
+				  Builder.SetInsertPoint( orEnd );
+
+				  auto phi = Builder.CreatePHI( TypeView::getBoolTy()->type, 2, "phi" );
+				  phi->addIncoming( lhs.get(), bb );
+				  phi->addIncoming( rhs.get(), orNext );
+
+				  return QualifiedValue( TypeView::getBoolTy(), phi );
+			  }
+
 			  auto lhs = get<QualifiedValue>( codegen( children[ 0 ] ) );
 			  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) );
-			  return handle_binary_expr( children[ 1 ][ 1 ].asCString(), lhs, rhs, node );
+			  return handle_binary_expr( op, lhs, rhs, node );
 		  } ) }
+		/*
+		{ "conditional_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
+			  auto &children = node[ "children" ];
+
+			  auto value = get<QualifiedValue>( codegen( children[ 0 ] ) )
+							 .value( children[ 0 ] )
+							 .cast(
+							   TypeView::getBoolTy(),
+							   children[ 0 ] );
+
+			  auto fn = static_cast<Function *>(
+				currentFunction->get() );
+
+			  auto quesEnd = BasicBlock::Create( TheContext, "ques.end", fn );
+			  auto quesSecd = BasicBlock::Create( TheContext, "ques.secd", fn, quesEnd );
+			  auto quesFst = BasicBlock::Create( TheContext, "ques.fst", fn, quesSecd );
+
+			  Builder.CreateCondBr( value.get(), quesFst, quesSecd );
+			  auto bb = Builder.GetInsertBlock();
+
+			  Builder.SetInsertPoint( quesFst );
+			  auto lhs = get<QualifiedValue>( codegen( children[ 2 ] ) )
+						   .value( children[ 2 ] 
+				);
+			  Builder.CreateBr( quesEnd );
+			  Builder.SetInsertPoint( quesSecd );
+
+			  auto rhs = get<QualifiedValue>( codegen( children[ 4 ] ) )
+						   .value( children[ 4 ] );
+			  Builder.SetInsertPoint( quesEnd );
+			  auto phi = Builder.CreatePHI( TypeView::getBoolTy()->type, 2, "phi" );
+			  phi->addIncoming( lhs.get(), quesFst );
+			  phi->addIncoming( rhs.get(), quesSecd );
+
+			  return QualifiedValue( TypeView::get, phi );
+		  } ) }
+		  */
+
 	};
 
 	handlers.insert( expr.begin(), expr.end() );
