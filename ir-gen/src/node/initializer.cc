@@ -322,9 +322,9 @@ static void make_local_union( QualifiedValue &agg, InitList &init,
 
 void make_local_value( QualifiedValue alloc, QualifiedValue value, Json::Value &ast )
 {
-	if ( dyn_cast_or_null<Constant>( value.get() ) )
+	if ( !dyn_cast_or_null<Constant>( value.get() ) )
 	{
-		alloc.store( value, ast, ast );
+		alloc.store( value, ast, ast, true );
 	}
 }
 

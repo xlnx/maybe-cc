@@ -480,20 +480,18 @@ int Declaration::reg()
 			  // with arg = QualifiedTypeBuilder *
 			  auto &children = node[ "children" ];
 			  int type_qualifier = 0;
+			  int next = 0;
 
 			  if ( children.size() > 1 )
 			  {
 				  if ( children[ 1 ][ "type" ].asString() == "type_qualifier_list_i" )
 				  {
 					  type_qualifier = get<int>( codegen( children[ 1 ] ) );
-					  if ( children.size() > 2 )
-					  {
-						  codegen( children[ 2 ], builder );
-					  }
+					  if ( children.size() > 2 ) next = 2;
 				  }
 				  else
 				  {
-					  codegen( children[ 1 ], builder );
+					  next = 1;
 				  }
 			  }
 
@@ -502,6 +500,11 @@ int Declaration::reg()
 				base->type,
 				( type_qualifier & TQ_CONST ) != 0,
 				( type_qualifier & TQ_VOLATILE ) != 0 ) );
+
+			  if ( next > 0 )
+			  {
+				  codegen( children[ next ], builder );
+			  }
 
 			  return VoidType();
 		  } ) },

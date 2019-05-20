@@ -163,7 +163,18 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 			auto dest = dst;
 			auto type = this->type;
 
-			if ( !type->is<mty::Function>() ) type.next();
+			if ( !type->is<mty::Function>() )
+			{
+				if ( auto deref = type->as<mty::Array>() )
+				{
+					Json::Value ast;
+					this->val = deref->deref( type, this->val, ast );
+				}
+				else
+				{
+					type.next();
+				}
+			}
 			dest.next();
 
 			if ( !dest->is<mty::Void>() && !type->is<mty::Void>() )

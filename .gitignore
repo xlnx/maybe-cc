@@ -3,4 +3,3 @@
 /target
 /tmp
 **/*.rs.bk
-/tests

@@ -37,9 +37,19 @@ public:
 	{
 		return !is_lvalue;
 	}
-	QualifiedValue &store( QualifiedValue &val, Json::Value &lhs, Json::Value &rhs )
+	QualifiedValue &store( QualifiedValue &val, Json::Value &lhs, Json::Value &rhs, bool ignore_const = false )
 	{
-		if ( !is_lvalue || val.is_lvalue ) INTERNAL_ERROR();
+		if ( !is_lvalue )
+		{
+			infoList->add_msg( MSG_TYPE_ERROR,
+							   fmt( "expression is not assignable" ),
+							   lhs );
+			HALT();
+		}
+		if ( val.is_lvalue )
+		{
+			INTERNAL_ERROR();
+		}
 
 		if ( type->is<mty::Address>() || type->is<mty::Void>() )
 		{
@@ -48,7 +58,7 @@ public:
 							   lhs );
 			HALT();
 		}
-		if ( type->is_const )
+		if ( !ignore_const && type->is_const )
 		{
 			infoList->add_msg( MSG_TYPE_ERROR,
 							   fmt( "cannot assign to const-qualified type `", type, "`" ),
@@ -171,6 +181,7 @@ public:
 		{
 			deref( children[ 0 ] ).value( children[ 0 ] );
 		}
+
 		if ( auto fn = type->as<mty::Function>() )
 		{
 			if ( fn->is_va_args && args.size() < fn->args.size() ||
@@ -189,9 +200,11 @@ public:
 			for ( auto i = 0; i != args.size(); ++i )
 			{
 				if ( args[ i ].is_lvalue ) INTERNAL_ERROR();
+
 				args_val.emplace_back(
 				  i < fn->args.size() ? args[ i ].cast(
-												   TypeView( std::make_shared<QualifiedType>( fn->args[ i ].type ) ),
+												   TypeView( std::make_shared<QualifiedType>(
+													 fn->args[ i ].type ) ),
 												   children[ i + 2 ] )
 										  .get()
 									  : args[ i ].get() );
