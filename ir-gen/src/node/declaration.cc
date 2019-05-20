@@ -523,6 +523,9 @@ int Declaration::reg()
 
 			  return type_qualifier;
 		  } ) },
+		{ "empty_declaration_specifiers", pack_fn<bool, DeclarationSpecifiers>( []( Json::Value &node, bool const & ) -> DeclarationSpecifiers {
+			  return DeclarationSpecifiers();
+		  } ) }
 	};
 
 	handlers.insert( decl.begin(), decl.end() );

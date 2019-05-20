@@ -1,5 +1,34 @@
 #include "value.h"
 
+bool QualifiedValue::cast_binary_ptr( QualifiedValue &self, QualifiedValue &other, Json::Value &node )
+{
+	auto lhs = self.type->as<mty::Pointer>();
+	auto rhs = other.type->as<mty::Pointer>();
+
+	if ( lhs || rhs )
+	{
+		if ( lhs && rhs )
+		{
+			UNIMPLEMENTED();
+			// auto self = self.type;
+			// if ( self.type.is_same_discard_qualifiers( other.type ) )
+			// {
+			// }
+		}
+		else if ( lhs )
+		{
+			other.cast( self.type, node[ "children" ][ 2 ] );
+		}
+		else
+		{
+			self.cast( other.type, node[ "children" ][ 2 ] );
+		}
+		return true;
+	}
+
+	return false;
+}
+
 void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool allow_float )
 {
 	if ( self.is_lvalue || other.is_lvalue )
@@ -86,6 +115,7 @@ void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &oth
 		  MSG_TYPE_ERROR,
 		  fmt( "invalid operands to binary expression (`", self.type, "` and `", other.type, "`)" ),
 		  node );
+		HALT();
 	}
 }
 

@@ -26,10 +26,14 @@ int Enumerate::reg()
 					  int_ty->type,
 					  APInt( 32, 0, true ) ) );
 
+				  int child_cnt = 0;
+
 				  for ( int i = an + 1; i < children.size() - 1; ++i )
 				  {
 					  if ( children[ i ].isObject() )
 					  {
+						  ++child_cnt;
+
 						  auto &node = children[ i ];
 						  auto &children = node[ "children" ];
 						  Option<QualifiedValue> val;
@@ -67,6 +71,14 @@ int Enumerate::reg()
 							  val.unwrap().get() ),
 							node );
 					  }
+				  }
+
+				  if ( child_cnt == 0 )
+				  {
+					  infoList->add_msg(
+						MSG_TYPE_ERROR,
+						fmt( "use of empty enum" ),
+						children[ children.size() - 1 ] );
 				  }
 
 				  enum_ty->set_body( node );

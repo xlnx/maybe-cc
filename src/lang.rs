@@ -365,9 +365,13 @@ lang! {
         declarator ":" constant_expression
     ],
     enum_specifier => [
-        "enum" enter_block enumerator_list leave_block,
-        "enum" IDENTIFIER enter_block enumerator_list leave_block,
+        "enum" enter_block enumerator_list_i leave_block,
+        "enum" IDENTIFIER enter_block enumerator_list_i leave_block,
         "enum" IDENTIFIER
+    ],
+    enumerator_list_i => [
+        enumerator_list |@flatten|,
+        _ |@flatten|
     ],
     enumerator_list => [
         enumerator |@flatten|,
@@ -531,9 +535,12 @@ lang! {
             }
         }
     ],
+    empty_declaration_specifiers => [
+        _
+    ],
     function_definition => [
         function_definition_prefix compound_statement,
-        declarator declaration_list compound_statement,
-        declarator compound_statement
+        empty_declaration_specifiers declarator declaration_list compound_statement,
+        empty_declaration_specifiers declarator compound_statement
     ]
 }

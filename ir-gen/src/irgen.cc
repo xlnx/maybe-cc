@@ -19,7 +19,8 @@ JumpTable<NodeHandler> handlers = {
 			  HALT();
 		  }
 
-		  auto builder = declspec.into_type_builder( children[ 0 ] );
+		  auto builder = declspec.into_type_builder(
+			children[ 0 ][ "type" ].asString() == "empty_declaration_specifiers" ? children[ 1 ] : children[ 0 ] );
 
 		  auto decl = get<QualifiedDecl>( codegen( children[ 1 ], &builder ) );
 		  auto type = decl.type;
@@ -254,7 +255,7 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 
 	dbg( "enter global" );
 
-	// StackTrace _;
+	StackTrace _;
 
 	try
 	{

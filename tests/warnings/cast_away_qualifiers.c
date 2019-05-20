@@ -14,4 +14,6 @@ int main()
 
 	const cint_ptr_t val_a[ 2 ];   /* const int *const vals[2] */
 	int *const *val_ptr_a = val_a; /*       int *const *       */
+
+	const int ( *f )() = ******main;
 }

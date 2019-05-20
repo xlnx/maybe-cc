@@ -225,6 +225,7 @@ public:
 	}
 
 public:
+	static bool cast_binary_ptr( QualifiedValue &self, QualifiedValue &other, Json::Value &node );
 	static void cast_binary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool allow_float = true );
 	QualifiedValue &cast( const TypeView &dst, Json::Value &node );
 };

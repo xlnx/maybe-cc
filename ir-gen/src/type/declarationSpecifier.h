@@ -79,7 +79,7 @@ public:
 		if ( ( this->attrs & TYPE_MODIFIER ) != 0 )
 		{
 			infoList->add_msg( MSG_TYPE_ERROR, "type modifiers cannot be used on boxed types", ast );
-			HALT();
+			return *this;
 		}
 		if ( ( this->type.is_none() ) && !( this->attrs & TYPE_SPECIFIER ) )
 		{
@@ -98,25 +98,32 @@ public:
 		auto attr = get_attr_from( name );
 		if ( ( attr & STORAGE_SPECIFIER ) && ( this->attrs & STORAGE_SPECIFIER ) )
 		{
-			infoList->add_msg( MSG_TYPE_ERROR, "multiple storage specifiers", ast );
-			HALT();
+			if ( ( this->attrs & STORAGE_SPECIFIER ) == attr )
+			{
+				infoList->add_msg( MSG_TYPE_WARNING, fmt( "duplicate `", name, "` storage specifier" ), ast );
+			}
+			else
+			{
+				infoList->add_msg( MSG_TYPE_ERROR, "multiple storage specifiers", ast );
+			}
+			return *this;
 		}
 		if ( ( attr & TYPE_SPECIFIER ) && ( ( this->attrs & TYPE_SPECIFIER ) || ( this->type.is_some() ) ) )
 		{
 			infoList->add_msg( MSG_TYPE_ERROR, "multiple type specifiers", ast );
-			HALT();
+			return *this;
 		}
 		if ( ( attr & TYPE_MODIFIER ) && this->type.is_some() )
 		{
 			infoList->add_msg( MSG_TYPE_ERROR, "type modifiers cannot be used on boxed types", ast );
-			HALT();
+			return *this;
 		}
 		if ( attr == TM_LONG )
 		{
 			if ( ( this->attrs & TM_LONG_LONG ) != 0 )
 			{
 				infoList->add_msg( MSG_TYPE_ERROR, "cannot combine with previous `long long` declaration specifier", ast );
-				HALT();
+				return *this;
 			}
 			else if ( ( this->attrs & TM_LONG ) != 0 )
 			{
@@ -132,12 +139,12 @@ public:
 		if ( ( this->attrs & ( TM_LONG | TM_LONG_LONG ) ) && ( this->attrs & TM_SHORT ) )
 		{
 			infoList->add_msg( MSG_TYPE_ERROR, "`long short` is invalid", ast );
-			HALT();
+			this->attrs &= ~TM_SHORT;
 		}
 		if ( ( this->attrs & TM_SIGNED ) && ( this->attrs & TM_UNSIGNED ) )
 		{
 			infoList->add_msg( MSG_TYPE_ERROR, "`signed unsigned` is invalid", ast );
-			HALT();
+			this->attrs &= ~TM_UNSIGNED;
 		}
 		return *this;
 	}

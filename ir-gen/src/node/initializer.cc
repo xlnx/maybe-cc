@@ -577,8 +577,23 @@ int Initializer::reg()
 			  if ( child_cnt == 0 )
 			  {
 				  auto &type = declspec.get_type();
-				  if ( type.is_none() ||
-					   !( type.unwrap().is<mty::Structural>() || type.unwrap().is<mty::Enum>() ) )
+				  auto decl_none = true;
+				  if ( type.is_some() )
+				  {
+					  if ( auto struct_ty = type.unwrap()->as<mty::Struct>() )
+					  {
+						  decl_none = struct_ty->name.is_none();
+					  }
+					  else if ( auto union_ty = type.unwrap()->as<mty::Union>() )
+					  {
+						  decl_none = union_ty->name.is_none();
+					  }
+					  else if ( type.unwrap()->is<mty::Enum>() )
+					  {
+						  decl_none = false;
+					  }
+				  }
+				  if ( decl_none )
 				  {
 					  infoList->add_msg(
 						MSG_TYPE_WARNING,
@@ -634,7 +649,6 @@ int Initializer::reg()
 									MSG_TYPE_ERROR,
 									fmt( "variable has incomplete type `", type, "`" ),
 									children[ 0 ] );
-								  HALT();
 							  }
 							  else if ( type.is<mty::Function>() )
 							  {  // function declaration
