@@ -11,7 +11,7 @@ int Statement::reg()
 			  // Ignore the { and }
 			  for ( int i = 1; i < children.size() - 1; i++ )
 			  {
-				  if ( curr_bb_has_ret() ) break;
+				  //   if ( curr_bb_has_ret() ) break;
 				  codegen( children[ i ] );
 			  }
 
@@ -54,10 +54,8 @@ int Statement::reg()
 
 					   Builder.SetInsertPoint( loopBody );
 					   codegen( children[ 4 ] );
-					   if ( !curr_bb_has_ret() )
-					   {
-						   Builder.CreateBr( loopCond );
-					   }
+
+					   Builder.CreateBr( loopCond );
 
 					   continueJump.pop();
 					   breakJump.pop();
@@ -79,10 +77,7 @@ int Statement::reg()
 
 					   Builder.SetInsertPoint( loopBody );
 					   codegen( children[ 1 ] );
-					   if ( !curr_bb_has_ret() )
-					   {
-						   Builder.CreateBr( loopCond );
-					   }
+					   Builder.CreateBr( loopCond );
 
 					   continueJump.pop();
 					   breakJump.pop();
@@ -139,10 +134,7 @@ int Statement::reg()
 					   Builder.SetInsertPoint( loopBody );
 					   int index = children[ 4 ].isObject() ? 6 : 5;
 					   codegen( children[ index ] );
-					   if ( !curr_bb_has_ret() )
-					   {
-						   Builder.CreateBr( loopInc );
-					   }
+					   Builder.CreateBr( loopInc );
 
 					   continueJump.pop();
 					   breakJump.pop();
@@ -167,45 +159,45 @@ int Statement::reg()
 
 			  static JumpTable<VoidType( Json::Value & children, Json::Value & ast )> __ = {
 				  { "return", []( Json::Value &children, Json::Value &ast ) -> VoidType {
-					   if ( !curr_bb_has_ret() )
+					   auto fn_res_ty = currentFunction->get_type();
+					   fn_res_ty.next();
+					   if ( children.size() == 3 )
 					   {
-						   auto fn_res_ty = currentFunction->get_type();
-						   fn_res_ty.next();
-						   if ( children.size() == 3 )
+						   if ( fn_res_ty->is<mty::Void>() )
 						   {
-							   if ( fn_res_ty->is<mty::Void>() )
-							   {
-								   infoList->add_msg(
-									 MSG_TYPE_ERROR,
-									 fmt( "void function `", funcName, "` should not return a value" ),
-									 children[ 1 ] );
-								   HALT();
-							   }
-							   auto retValue = get<QualifiedValue>( codegen( children[ 1 ] ) )
-												 .value( children[ 1 ] )
-												 .cast( fn_res_ty, children[ 1 ] );
-							   Builder.CreateRet( retValue.get() );
+							   infoList->add_msg(
+								 MSG_TYPE_ERROR,
+								 fmt( "void function `", funcName, "` should not return a value" ),
+								 children[ 1 ] );
+							   HALT();
 						   }
-						   else if ( children.size() == 2 )
+						   auto retValue = get<QualifiedValue>( codegen( children[ 1 ] ) )
+											 .value( children[ 1 ] )
+											 .cast( fn_res_ty, children[ 1 ] );
+						   Builder.CreateRet( retValue.get() );
+					   }
+					   else if ( children.size() == 2 )
+					   {
+						   if ( fn_res_ty->is<mty::Void>() )
 						   {
-							   if ( fn_res_ty->is<mty::Void>() )
-							   {
-								   Builder.CreateRet( nullptr );
-							   }
-							   else
-							   {
-								   infoList->add_msg(
-									 MSG_TYPE_ERROR,
-									 fmt( "non-void function `", funcName, "` should return a value" ),
-									 ast );
-								   HALT();
-							   }
+							   Builder.CreateRet( nullptr );
 						   }
 						   else
 						   {
-							   INTERNAL_ERROR();
+							   infoList->add_msg(
+								 MSG_TYPE_ERROR,
+								 fmt( "non-void function `", funcName, "` should return a value" ),
+								 ast );
+							   HALT();
 						   }
 					   }
+					   else
+					   {
+						   INTERNAL_ERROR();
+					   }
+
+					   auto tempBlock = BasicBlock::Create( TheContext, "temp", static_cast<Function *>( currentFunction->get() ) );
+					   Builder.SetInsertPoint( tempBlock );
 
 					   return VoidType();
 				   } },
@@ -214,10 +206,7 @@ int Statement::reg()
 					   auto targetLable = labelJump.find( labelName );
 					   if ( targetLable != labelJump.end() )
 					   {
-						   if ( !curr_bb_has_ret() )
-						   {
-							   Builder.CreateBr( targetLable->second );
-						   }
+						   Builder.CreateBr( targetLable->second );
 					   }
 					   else
 					   {
@@ -243,6 +232,9 @@ int Statement::reg()
 					   auto targetBB = continueJump.top();
 					   Builder.CreateBr( targetBB );
 
+					   auto tempBlock = BasicBlock::Create( TheContext, "temp", static_cast<Function *>( currentFunction->get() ) );
+					   Builder.SetInsertPoint( tempBlock );
+
 					   return VoidType();
 				   } },
 				  { "break", []( Json::Value &children, Json::Value &ast ) -> VoidType {
@@ -256,6 +248,9 @@ int Statement::reg()
 					   }
 					   auto targetBB = breakJump.top();
 					   Builder.CreateBr( targetBB );
+
+					   auto tempBlock = BasicBlock::Create( TheContext, "temp", static_cast<Function *>( currentFunction->get() ) );
+					   Builder.SetInsertPoint( tempBlock );
 
 					   return VoidType();
 				   } }
@@ -288,17 +283,11 @@ int Statement::reg()
 
 					  Builder.SetInsertPoint( ifThen );
 					  codegen( children[ 4 ] );
-					  if ( !curr_bb_has_ret() )
-					  {
-						  Builder.CreateBr( ifEnd );
-					  }
+					  Builder.CreateBr( ifEnd );
 
 					  Builder.SetInsertPoint( ifElse );
 					  codegen( children[ 6 ] );
-					  if ( !curr_bb_has_ret() )
-					  {
-						  Builder.CreateBr( ifEnd );
-					  }
+					  Builder.CreateBr( ifEnd );
 
 					  Builder.SetInsertPoint( ifEnd );
 				  }
@@ -315,10 +304,7 @@ int Statement::reg()
 
 					  Builder.SetInsertPoint( ifThen );
 					  codegen( children[ 4 ] );
-					  if ( !curr_bb_has_ret() )
-					  {
-						  Builder.CreateBr( ifEnd );
-					  }
+					  Builder.CreateBr( ifEnd );
 
 					  Builder.SetInsertPoint( ifEnd );
 				  }
@@ -331,7 +317,48 @@ int Statement::reg()
 			  }
 			  else if ( stateType == "switch" )
 			  {
-				  UNIMPLEMENTED();
+				  auto value = get<QualifiedValue>( codegen( children[ 2 ] ) )
+								 .value( children[ 2 ] );
+				  if ( !value.get_type()->is<mty::Integer>() )
+				  {
+					  infoList->add_msg(
+						MSG_TYPE_ERROR,
+						fmt( "statement requires expression of integer type" ),
+						node );
+					  HALT();
+				  }
+
+				  auto epilog = BasicBlock::Create( TheContext, "sw.epilog", static_cast<Function *>( currentFunction->get() ) );
+				  BasicBlock *defaultCase = nullptr;
+
+				  auto switchIns = Builder.CreateSwitch( value.get(), epilog );
+
+				  caseList.emplace( std::map<ConstantInt *, BasicBlock *>() );
+				  defaultList.emplace( std::make_pair( false, defaultCase ) );
+				  breakJump.emplace( epilog );
+
+				  codegen( children[ 4 ] );
+
+				  auto &defaultTarget = defaultList.top();
+				  if ( defaultTarget.first )
+				  {
+					  switchIns->setDefaultDest( defaultTarget.second );
+				  }
+
+				  auto &cases = caseList.top();
+				  for ( auto cs : cases )
+				  {
+					  switchIns->addCase( cs.first, cs.second );
+				  }
+
+				  caseList.pop();
+				  defaultList.pop();
+				  breakJump.pop();
+
+				  Builder.CreateBr( epilog );
+				  Builder.SetInsertPoint( epilog );
+
+				  return VoidType();
 			  }
 			  else
 			  {
@@ -343,19 +370,67 @@ int Statement::reg()
 			  auto labelType = children[ 0 ][ 1 ].asString();
 			  if ( labelType == "case" )
 			  {
-				  UNIMPLEMENTED();
+				  auto value = get<QualifiedValue>( codegen( children[ 1 ] ) )
+								 .value( children[ 1 ] );
+				  if ( !value.get_type()->is<mty::Integer>() )
+				  {
+					  infoList->add_msg(
+						MSG_TYPE_ERROR,
+						fmt( "expression is not an integer constant expression" ),
+						node );
+					  HALT();
+				  }
+				  ConstantInt *cc_val = dyn_cast_or_null<ConstantInt>( value.get() );
+				  if ( !cc_val )
+				  {
+					  infoList->add_msg(
+						MSG_TYPE_ERROR,
+						fmt( "expression is not an integer constant expression" ),
+						node );
+					  HALT();
+				  }
+
+				  auto castBlock = BasicBlock::Create( TheContext, "sw.bb", static_cast<Function *>( currentFunction->get() ) );
+
+				  auto &cases = caseList.top();
+				  //   cases[ cc_val ] = castBlock;
+				  cases.insert( std::make_pair( cc_val, castBlock ) );  // redefinition
+
+				  auto bb = Builder.GetInsertBlock();
+				  auto inst = &bb->back();
+				  if ( !dyn_cast_or_null<SwitchInst>( inst ) )
+				  {
+					  Builder.CreateBr( castBlock );
+				  }
+
+				  Builder.SetInsertPoint( castBlock );
+				  codegen( children[ 3 ] );
+
+				  return VoidType();
 			  }
 			  else if ( labelType == "default" )
 			  {
-				  UNIMPLEMENTED();
+				  auto &defaultBlock = defaultList.top();
+				  defaultBlock.first = true;
+
+				  defaultBlock.second = BasicBlock::Create( TheContext, "sw.default", static_cast<Function *>( currentFunction->get() ) );
+
+				  auto bb = Builder.GetInsertBlock();
+				  auto inst = &bb->back();
+				  if ( !dyn_cast_or_null<SwitchInst>( inst ) )
+				  {
+					  Builder.CreateBr( defaultBlock.second );
+				  }
+
+				  Builder.SetInsertPoint( defaultBlock.second );
+				  codegen( children[ 2 ] );
+
+				  return VoidType();
 			  }
 			  else
 			  {
 				  auto label = BasicBlock::Create( TheContext, labelType, static_cast<Function *>( currentFunction->get() ) );
-				  if ( !curr_bb_has_ret() )
-				  {
-					  Builder.CreateBr( label );
-				  }
+				  Builder.CreateBr( label );
 
 				  if ( labelJump.find( labelType ) != labelJump.end() )
 				  {
@@ -372,10 +447,7 @@ int Statement::reg()
 					  for ( auto &entry : gotoJump[ labelType ] )
 					  {
 						  Builder.SetInsertPoint( entry.first );
-						  if ( !curr_bb_has_ret() )
-						  {
-							  Builder.CreateBr( label );
-						  }
+						Builder.CreateBr( label );
 					  }
 					  gotoJump.erase( labelType );
 				  }

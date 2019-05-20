@@ -111,11 +111,11 @@ std::string fmt( Args &&... args )
 template <typename... Args>
 void dbg( Args &&... args )
 {
-    extern bool is_debug_mode;
-    if (is_debug_mode)
-    {
-	    std::cerr << fmt( std::forward<Args>( args )... ) << std::endl;
-    }
+	extern bool is_debug_mode;
+	if ( is_debug_mode )
+	{
+		std::cerr << fmt( std::forward<Args>( args )... ) << std::endl;
+	}
 }
 
 namespace __impl
@@ -156,10 +156,10 @@ inline bool curr_bb_has_ret()
 	return false;
 }
 
-inline bool secure_exec(const std::function<void()> &wrapped)
+inline bool secure_exec( const std::function<void()> &wrapped )
 {
-    using namespace ffi;
-    extern MsgList *infoList;
+	using namespace ffi;
+	extern MsgList *infoList;
 	try
 	{
 		wrapped();

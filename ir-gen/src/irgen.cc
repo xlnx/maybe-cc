@@ -111,43 +111,40 @@ JumpTable<NodeHandler> handlers = {
 			  HALT();
 		  }
 
-		  if ( !curr_bb_has_ret() )
+		  auto ret_ty = TypeView( std::make_shared<QualifiedType>( type ) ).next();
+		  AllocaInst *retValue;
+		  LoadInst *retLoad;
+		  if ( !ret_ty->is<mty::Void>() && ( name != "main" || !ret_ty->is<mty::Integer>() ) )
 		  {
-			  auto ret_ty = TypeView( std::make_shared<QualifiedType>( type ) ).next();
-			  AllocaInst *retValue;
-			  LoadInst *retLoad;
-			  if ( !ret_ty->is<mty::Void>() && ( name != "main" || !ret_ty->is<mty::Integer>() ) )
-			  {
-				  retValue = Builder.CreateAlloca( ret_ty->type );
-				  retLoad = Builder.CreateLoad( retValue );
-				  retValue->setName( "retVal" );
-			  }
+			  retValue = Builder.CreateAlloca( ret_ty->type );
+			  retLoad = Builder.CreateLoad( retValue );
+			  retValue->setName( "retVal" );
+		  }
 
-			  if ( name != "main" )
+		  if ( name != "main" )
+		  {
+			  if ( !ret_ty->is<mty::Void>() )
 			  {
-				  if ( !ret_ty->is<mty::Void>() )
-				  {
-					  Builder.CreateRet( retLoad );
-				  }
-				  else
-				  {
-					  Builder.CreateRet( nullptr );
-				  }
+				  Builder.CreateRet( retLoad );
 			  }
 			  else
 			  {
-				  if ( ret_ty->is<mty::Integer>() )
-				  {
-					  Builder.CreateRet( Constant::getIntegerValue( ret_ty->type, APInt( 32, 0, false ) ) );
-				  }
-				  else if ( !ret_ty->is<mty::Void>() )
-				  {
-					  Builder.CreateRet( retLoad );
-				  }
-				  else
-				  {
-					  Builder.CreateRet( nullptr );
-				  }
+				  Builder.CreateRet( nullptr );
+			  }
+		  }
+		  else
+		  {
+			  if ( ret_ty->is<mty::Integer>() )
+			  {
+				  Builder.CreateRet( Constant::getIntegerValue( ret_ty->type, APInt( 32, 0, false ) ) );
+			  }
+			  else if ( !ret_ty->is<mty::Void>() )
+			  {
+				  Builder.CreateRet( retLoad );
+			  }
+			  else
+			  {
+				  Builder.CreateRet( nullptr );
 			  }
 		  }
 

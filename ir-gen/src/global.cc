@@ -11,6 +11,8 @@ std::stack<BasicBlock *> continueJump;
 std::stack<BasicBlock *> breakJump;
 std::map<std::string, std::vector<std::pair<BasicBlock *, Json::Value>>> gotoJump;
 std::map<std::string, BasicBlock *> labelJump;
+std::stack<std::map<ConstantInt *, BasicBlock *>> caseList;
+std::stack<std::pair<bool, BasicBlock *>> defaultList;
 MsgList *infoList;
 SymbolTable symTable = SymbolTable();
 bool stack_trace = false;
