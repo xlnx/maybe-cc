@@ -89,7 +89,7 @@ public:
 		return val;
 	}
 
-	Value *offset( TypeView &view, Value *val, Value *off, Json::Value &ast ) const override
+	Value *offset( const TypeView &view, Value *val, Value *off, Json::Value &ast ) const override
 	{
 		infoList->add_msg(
 		  MSG_TYPE_ERROR,

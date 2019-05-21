@@ -99,7 +99,7 @@ public:
 	using Qualified::Qualified;
 
 	virtual Value *deref( TypeView &view, Value *val, Json::Value &ast ) const = 0;
-	virtual Value *offset( TypeView &view, Value *val, Value *off, Json::Value &ast ) const = 0;
+	virtual Value *offset( const TypeView &view, Value *val, Value *off, Json::Value &ast ) const = 0;
 };
 
 class Address : public Derefable

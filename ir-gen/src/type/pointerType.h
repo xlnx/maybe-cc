@@ -61,9 +61,9 @@ public:
 		return val;
 	}
 
-	Value *offset( TypeView &view, Value *val, Value *off, Json::Value &ast ) const override
+	Value *offset( const TypeView &view, Value *val, Value *off, Json::Value &ast ) const override
 	{
-		auto ty = view.next()->type;
+		auto ty = static_cast<llvm::PointerType *>( type )->getElementType();
 		if ( ty->isStructTy() )
 		{
 			if ( static_cast<const llvm::StructType *>( ty )->isOpaque() )
