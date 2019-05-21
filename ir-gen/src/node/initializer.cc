@@ -468,10 +468,11 @@ static void make_local_array( QualifiedValue &array, InitList &init, std::size_t
 	{
 		auto elem = array;
 		elem.offset(
-		  ConstantInt::get(
-			TypeView::getLongLongTy( false )->type,
-			APInt( 64, i, false ) ),
-		  ast );
+			  ConstantInt::get(
+				TypeView::getLongLongTy( false )->type,
+				APInt( 64, i, false ) ),
+			  ast )
+		  .deref( ast );
 		if ( curr < init.size() )
 		{
 			make_local_object( elem, init, curr );

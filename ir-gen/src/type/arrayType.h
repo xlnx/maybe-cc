@@ -79,12 +79,11 @@ public:
 		return Builder.CreateConstGEP2_64( val, 0, 0 );
 	}
 
-	Value *offset( TypeView &view, Value *val, Value *off, Json::Value &ast ) const override
+	Value *offset( const TypeView &view, Value *val, Value *off, Json::Value &ast ) const override
 	{
 		static const auto zero = ConstantInt::get( TheContext, APInt( 64, 0, true ) );
 		static Value *indices[ 2 ] = { zero, nullptr };
 
-		view.next();
 		indices[ 1 ] = off;
 		return Builder.CreateInBoundsGEP( val, indices );
 	}

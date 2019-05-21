@@ -1,7 +1,49 @@
 #include "value.h"
 
+static bool deref_into_ptr_unwrap( TypeView &view, Value *&val )
+{
+	if ( view->is<mty::Derefable>() )
+	{
+		if ( !view->is<mty::Function>() )
+		{
+			if ( auto deref = view->as<mty::Array>() )
+			{
+				Json::Value ast;
+				val = deref->deref( view, val, ast );
+			}
+			else
+			{
+				view.next();
+			}
+		}
+		return true;
+	}
+	return false;
+}
+
 bool QualifiedValue::cast_binary_ptr( QualifiedValue &self, QualifiedValue &other, Json::Value &node )
 {
+	auto lhs_ty = self.type;
+	auto rhs_ty = other.type;
+
+	static auto ensure_is_ptr_if_deref = []( QualifiedValue &val ) {
+		if ( deref_into_ptr_unwrap( val.type, val.val ) )
+		{
+			Json::Value ast;
+			auto builder = DeclarationSpecifiers()
+							 .add_type( val.type.into_type(), ast )
+							 .into_type_builder( ast );
+			val.type = TypeView( std::make_shared<QualifiedType>(
+			  builder
+				.add_level( std::make_shared<mty::Pointer>( val.type->type ) )
+				.build() ) );
+		}
+		return val;
+	};
+
+	ensure_is_ptr_if_deref( self );
+	ensure_is_ptr_if_deref( other );
+
 	auto lhs = self.type->as<mty::Pointer>();
 	auto rhs = other.type->as<mty::Pointer>();
 
@@ -9,19 +51,63 @@ bool QualifiedValue::cast_binary_ptr( QualifiedValue &self, QualifiedValue &othe
 	{
 		if ( lhs && rhs )
 		{
-			UNIMPLEMENTED();
-			// auto self = self.type;
-			// if ( self.type.is_same_discard_qualifiers( other.type ) )
-			// {
-			// }
-		}
-		else if ( lhs )
-		{
-			other.cast( self.type, node[ "children" ][ 2 ] );
+			if ( !self.type.is_same_discard_qualifiers( other.type ) )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_ERROR,
+				  fmt( "comparison of distinct pointer types (`", self.type,
+					   "` and `", other.type,
+					   "`)" ),
+				  node );
+
+				self.type = other.type;
+				self.val = Builder.CreatePointerCast( self.val, other.type->type );
+			}
 		}
 		else
 		{
-			self.cast( other.type, node[ "children" ][ 2 ] );
+			if ( lhs )
+			{
+				if ( other.type->is<mty::Integer>() )
+				{
+					other.cast( self.type, node[ "children" ][ 2 ], false );
+					infoList->add_msg(
+					  MSG_TYPE_WARNING,
+					  fmt( "comparison between pointer and integer (`", self.type,
+						   "` and `", other.type, "`)" ),
+					  node );
+				}
+				else
+				{
+					infoList->add_msg(
+					  MSG_TYPE_ERROR,
+					  fmt( "invalid operands to binary expression (`", lhs_ty,
+						   "` and `", rhs_ty, "`)" ),
+					  node );
+					HALT();
+				}
+			}
+			else
+			{
+				if ( self.type->is<mty::Integer>() )
+				{
+					self.cast( other.type, node[ "children" ][ 0 ], false );
+					infoList->add_msg(
+					  MSG_TYPE_WARNING,
+					  fmt( "comparison between pointer and integer (`", self.type,
+						   "` and `", other.type, "`)" ),
+					  node );
+				}
+				else
+				{
+					infoList->add_msg(
+					  MSG_TYPE_ERROR,
+					  fmt( "invalid operands to binary expression (`", lhs_ty,
+						   "` and `", rhs_ty, "`)" ),
+					  node );
+					HALT();
+				}
+			}
 		}
 		return true;
 	}
@@ -119,8 +205,10 @@ void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &oth
 	}
 }
 
-QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
+QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bool warn )
 {
+	dbg( type, " -> ", dst );
+
 	if ( this->is_lvalue )
 	{
 		INTERNAL_ERROR();
@@ -193,36 +281,33 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 			auto dest = dst;
 			auto type = this->type;
 
-			if ( !type->is<mty::Function>() )
-			{
-				if ( auto deref = type->as<mty::Array>() )
-				{
-					Json::Value ast;
-					this->val = deref->deref( type, this->val, ast );
-				}
-				else
-				{
-					type.next();
-				}
-			}
+			deref_into_ptr_unwrap( type, this->val );
 			dest.next();
 
 			if ( !dest->is<mty::Void>() && !type->is<mty::Void>() )
 			{
 				if ( !dest.is_same_discard_qualifiers( type ) )
 				{
-					infoList->add_msg(
-					  MSG_TYPE_WARNING,
-					  fmt( "incompatible pointer types casting to `", dst, "` from `", this->type, "`" ),
-					  node );
+					if ( warn )
+					{
+						infoList->add_msg(
+						  MSG_TYPE_WARNING,
+						  fmt( "incompatible pointer types casting to `", dst, "` from `", this->type, "`" ),
+						  node );
+					}
+					this->type = dst;
 					this->val = Builder.CreatePointerCast( this->val, dst->type );
 				}
 				else if ( !dest.is_qualifiers_compatible( type ) )
 				{
-					infoList->add_msg(
-					  MSG_TYPE_WARNING,
-					  fmt( "casting to `", dst, "` from `", this->type, "` discards qualifiers" ),
-					  node );
+					if ( warn )
+					{
+						infoList->add_msg(
+						  MSG_TYPE_WARNING,
+						  fmt( "casting to `", dst, "` from `", this->type, "` discards qualifiers" ),
+						  node );
+					}
+					this->type = dst;
 				}
 			}
 			else
@@ -230,15 +315,20 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 				if ( !( int( dest->is_const ) >= int( type->is_const ) &&
 						int( dest->is_volatile ) >= int( type->is_volatile ) ) )
 				{
-					infoList->add_msg(
-					  MSG_TYPE_WARNING,
-					  fmt( "casting to `", dst, "` from `", this->type, "` discards qualifiers" ),
-					  node );
+					if ( warn )
+					{
+						infoList->add_msg(
+						  MSG_TYPE_WARNING,
+						  fmt( "casting to `", dst, "` from `", this->type, "` discards qualifiers" ),
+						  node );
+					}
+					this->type = dst;
 				}
 				if ( !dest->is<mty::Void>() )
 				{
 					if ( !dest.is_same_discard_qualifiers( TypeView::getCharTy( true ) ) )
 					{
+						this->type = dst;
 						this->val = Builder.CreatePointerCast( this->val, dst->type );
 					}
 				}
@@ -246,6 +336,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 				{
 					if ( !type.is_same_discard_qualifiers( TypeView::getCharTy( true ) ) )
 					{
+						this->type = dst;
 						this->val = Builder.CreatePointerCast( this->val, dst->type );
 					}
 				}
@@ -253,10 +344,13 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 		}
 		else if ( this->type->is<mty::Integer>() )
 		{
-			infoList->add_msg(
-			  MSG_TYPE_WARNING,
-			  fmt( "incompatible integer to pointer conversion casting to `", dst, "` from `", this->type, "`" ),
-			  node );
+			if ( warn )
+			{
+				infoList->add_msg(
+				  MSG_TYPE_WARNING,
+				  fmt( "incompatible integer to pointer conversion casting to `", dst, "` from `", this->type, "`" ),
+				  node );
+			}
 			this->val = Builder.CreateIntToPtr( this->val, dst->type );
 		}
 		else
@@ -283,7 +377,11 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node )
 	}
 	else
 	{
-		INTERNAL_ERROR();
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "invalid cast destination type `", dst, "`" ),
+		  node );
+		HALT();
 	}
 
 	return *this;
