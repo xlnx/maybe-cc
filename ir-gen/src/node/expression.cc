@@ -406,7 +406,7 @@ int Expression::reg()
 			  auto &children = node[ "children" ];
 			  auto type = std::make_shared<QualifiedType>( get<QualifiedType>( codegen( children[ 1 ] ) ) );
 			  auto val = get<QualifiedValue>( codegen( children[ 3 ] ) ).value( children[ 3 ] );
-			  return val.cast( TypeView( type ), children[ 3 ] );
+			  return val.cast( TypeView( type ), children[ 3 ], false );
 		  } ) },
 		{ "unary_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
 			  auto &children = node[ "children" ];

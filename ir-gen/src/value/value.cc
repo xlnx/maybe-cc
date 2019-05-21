@@ -207,6 +207,8 @@ void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &oth
 
 QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bool warn )
 {
+	dbg( type, " -> ", dst );
+
 	if ( this->is_lvalue )
 	{
 		INTERNAL_ERROR();
@@ -293,6 +295,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bo
 						  fmt( "incompatible pointer types casting to `", dst, "` from `", this->type, "`" ),
 						  node );
 					}
+					this->type = dst;
 					this->val = Builder.CreatePointerCast( this->val, dst->type );
 				}
 				else if ( !dest.is_qualifiers_compatible( type ) )
@@ -304,6 +307,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bo
 						  fmt( "casting to `", dst, "` from `", this->type, "` discards qualifiers" ),
 						  node );
 					}
+					this->type = dst;
 				}
 			}
 			else
@@ -318,11 +322,13 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bo
 						  fmt( "casting to `", dst, "` from `", this->type, "` discards qualifiers" ),
 						  node );
 					}
+					this->type = dst;
 				}
 				if ( !dest->is<mty::Void>() )
 				{
 					if ( !dest.is_same_discard_qualifiers( TypeView::getCharTy( true ) ) )
 					{
+						this->type = dst;
 						this->val = Builder.CreatePointerCast( this->val, dst->type );
 					}
 				}
@@ -330,6 +336,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bo
 				{
 					if ( !type.is_same_discard_qualifiers( TypeView::getCharTy( true ) ) )
 					{
+						this->type = dst;
 						this->val = Builder.CreatePointerCast( this->val, dst->type );
 					}
 				}
