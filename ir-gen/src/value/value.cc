@@ -257,24 +257,44 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bo
 		{
 			if ( auto dty = dst->as<mty::Integer>() )
 			{
-				if ( auto ty = this->type->as<mty::Integer>() )
+				if ( auto ty = this->type->as<mty::Integer>() )  // int -> int
 				{
 					if ( !dst.is_same_discard_qualifiers( this->type ) )
 					{
+						auto int_ty = this->type->type;
 						this->type = dst;
-						this->val = Builder.CreateIntCast( this->val, dst->type, ty->is_signed );
+						if ( dty->bits == 1 )
+						{
+							this->val = Builder.CreateICmpNE(
+							  this->val,
+							  Constant::getIntegerValue( int_ty, APInt( ty->bits, 0, ty->is_signed ) ) );
+						}
+						else
+						{
+							this->val = Builder.CreateIntCast( this->val, dst->type, ty->is_signed );
+						}
 					}
 				}
-				else
+				else  // float -> int
 				{
+					auto fp_ty = this->type->type;
 					this->type = dst;
-					if ( dty->is_signed )
+					if ( dty->bits == 1 )
 					{
-						this->val = Builder.CreateFPToSI( this->val, dst->type );
+						this->val = Builder.CreateFCmpONE(
+						  this->val,
+						  ConstantFP::get( fp_ty, APFloat( 0.0 ) ) );
 					}
 					else
 					{
-						this->val = Builder.CreateFPToUI( this->val, dst->type );
+						if ( dty->is_signed )
+						{
+							this->val = Builder.CreateFPToSI( this->val, dst->type );
+						}
+						else
+						{
+							this->val = Builder.CreateFPToUI( this->val, dst->type );
+						}
 					}
 				}
 			}
@@ -304,7 +324,8 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bo
 		}
 		else if ( this->type->is<mty::Pointer>() && dst->is<mty::Integer>() )
 		{
-			if ( dst->as<mty::Integer>()->bits != 1 && warn )
+			auto is_bool = dst->as<mty::Integer>()->bits == 1;
+			if ( !is_bool && warn )
 			{
 				infoList->add_msg(
 				  MSG_TYPE_WARNING,
@@ -312,7 +333,17 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bo
 				  node );
 			}
 			this->type = dst;
-			this->val = Builder.CreatePtrToInt( this->val, dst->type );
+			if ( is_bool )
+			{
+				auto &long_ty = TypeView::getLongTy( false )->type;
+				this->val = Builder.CreateICmpNE(
+				  Builder.CreatePtrToInt( this->val, long_ty ),
+				  Constant::getIntegerValue( long_ty, APInt( 64, 0 ) ) );
+			}
+			else
+			{
+				this->val = Builder.CreatePtrToInt( this->val, dst->type );
+			}
 		}
 		else
 		{
