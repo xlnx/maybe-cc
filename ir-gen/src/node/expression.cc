@@ -651,23 +651,182 @@ int Expression::reg()
 						   return QualifiedValue( type, ConstantFP::get( type->type, num ) );
 					   } },
 					  { "CHAR", []( const char *val, Json::Value &node ) -> QualifiedValue {
-						   TODO( "unimplemented" );
 						   std::string esc_str = val;
-						   esc_str = esc_str.substr( esc_str.find_first_of( '"' ) + 1, esc_str.length() - 2 );
+						   esc_str = esc_str.substr( esc_str.find_first_of( '\'' ) + 1, esc_str.length() - 2 );
+
+						   auto wit = esc_str.begin();
+						   auto rit = esc_str.begin();
+						   if ( *rit == '\\' )
+						   {
+							   switch ( *++rit )
+							   {
+							   case 'a': *wit = '\a'; break;
+							   case 'b': *wit = '\b'; break;
+							   case 'e': *wit = '\e'; break;
+							   case 'f': *wit = '\f'; break;
+							   case 'n': *wit = '\n'; break;
+							   case 'r': *wit = '\r'; break;
+							   case 't': *wit = '\t'; break;
+							   case 'v': *wit = '\v'; break;
+							   case '\\': *wit = '\\'; break;
+							   case '\'': *wit = '\''; break;
+							   case '"': *wit = '"'; break;
+							   case '?': *wit = '\?'; break;
+							   case 'u': break;
+							   case 'x':
+							   {
+								   auto beg = ++rit;
+								   for ( int i = 0; i < 2; ++i, ++rit )
+								   {
+									   if ( !( ( *rit <= '9' && *rit >= '0' ) ||
+											   ( *rit <= 'F' && *rit >= 'A' ) ||
+											   ( *rit <= 'f' && *rit >= 'a' ) ) ||
+											( rit == esc_str.end() ) )
+									   {
+										   break;
+									   }
+								   }
+								   if ( rit <= beg )
+								   {
+									   infoList->add_msg(
+										 MSG_TYPE_ERROR,
+										 fmt( "\\x used with no following hex digits" ),
+										 node );
+									   HALT();
+								   }
+								   std::string s( beg, rit-- );
+								   *wit = std::stoi( s, nullptr, 16 );
+								   break;
+							   }
+							   default:
+							   {
+								   if ( *rit <= '7' && *rit >= '0' )
+								   {
+									   auto beg = rit++;
+									   for ( int i = 0; i < 2; ++i, ++rit )
+									   {
+										   auto ch = *rit;
+										   if ( !( ch <= '7' && ch >= '0' ) )
+										   {
+											   break;
+										   }
+									   }
+									   std::string s( beg, rit-- );
+									   *wit = std::stoi( s, nullptr, 8 );
+								   }
+								   else
+								   {
+									   char s[ 3 ] = { '\\', *rit, 0 };
+									   infoList->add_msg(
+										 MSG_TYPE_WARNING,
+										 fmt( "unknown escape sequence `", s, "`" ),
+										 node );
+								   }
+								   break;
+							   }
+							   }
+						   }
+						   else
+						   {
+							   *wit = *rit;
+						   }
 
 						   auto &type = TypeView::getCharTy( true );
 
+						   Json::Value dummy;
+						   auto builder = DeclarationSpecifiers()
+											.add_type( TypeView::getCharTy( true ).into_type(), dummy )
+											.into_type_builder( dummy );
 						   return QualifiedValue(
 							 type,
-							 Constant::getIntegerValue( type->type, APInt( 8, 0, true ) ),
+							 Constant::getIntegerValue( type->type, APInt( 8, esc_str[ 0 ], true ) ),
 							 false );
 					   } },
 					  { "STRING_LITERAL", []( const char *val, Json::Value &node ) -> QualifiedValue {
-						   TODO( "unimplemented" );
 						   std::string esc_str = val;
 						   esc_str = esc_str.substr( esc_str.find_first_of( '"' ) + 1, esc_str.length() - 2 );
 
-						   //
+						   auto wit = esc_str.begin();
+						   for ( auto rit = esc_str.begin(); rit != esc_str.end(); ++rit, ++wit )
+						   {
+							   if ( *rit == '\\' )
+							   {
+								   switch ( *++rit )
+								   {
+								   case 'a': *wit = '\a'; break;
+								   case 'b': *wit = '\b'; break;
+								   case 'e': *wit = '\e'; break;
+								   case 'f': *wit = '\f'; break;
+								   case 'n': *wit = '\n'; break;
+								   case 'r': *wit = '\r'; break;
+								   case 't': *wit = '\t'; break;
+								   case 'v': *wit = '\v'; break;
+								   case '\\': *wit = '\\'; break;
+								   case '\'': *wit = '\''; break;
+								   case '"': *wit = '"'; break;
+								   case '?': *wit = '\?'; break;
+								   case 'u': break;
+								   case 'x':
+								   {
+									   auto beg = ++rit;
+									   for ( int i = 0; i < 2; ++i, ++rit )
+									   {
+										   if ( !( ( *rit <= '9' && *rit >= '0' ) ||
+												   ( *rit <= 'F' && *rit >= 'A' ) ||
+												   ( *rit <= 'f' && *rit >= 'a' ) ) ||
+												( rit == esc_str.end() ) )
+										   {
+											   break;
+										   }
+									   }
+									   if ( rit <= beg )
+									   {
+										   infoList->add_msg(
+											 MSG_TYPE_ERROR,
+											 fmt( "\\x used with no following hex digits" ),
+											 node );
+										   HALT();
+									   }
+									   std::string s( beg, rit-- );
+
+									   *wit = std::stoi( s, nullptr, 16 );
+									   break;
+								   }
+								   default:
+								   {
+									   if ( *rit <= '7' && *rit >= '0' )
+									   {
+										   auto beg = rit++;
+										   for ( int i = 0; i < 2; ++i, ++rit )
+										   {
+											   auto ch = *rit;
+											   if ( !( ch <= '7' && ch >= '0' ) )
+											   {
+												   break;
+											   }
+										   }
+										   std::string s( beg, rit-- );
+										   *wit = std::stoi( s, nullptr, 8 );
+									   }
+									   else
+									   {
+										   char s[ 3 ] = { '\\', *rit, 0 };
+										   infoList->add_msg(
+											 MSG_TYPE_WARNING,
+											 fmt( "unknown escape sequence `", s, "`" ),
+											 node );
+									   }
+									   break;
+								   }
+								   }
+							   }
+							   else
+							   {
+								   *wit = *rit;
+							   }
+						   }
+						   *wit = '\0';
+						   esc_str.resize( strlen( esc_str.c_str() ) );
 
 						   Json::Value dummy;
 						   auto builder = DeclarationSpecifiers()
