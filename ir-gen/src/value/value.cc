@@ -109,7 +109,8 @@ bool QualifiedValue::cast_binary_ptr( QualifiedValue &self, QualifiedValue &othe
 	return false;
 }
 
-void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool allow_float )
+void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool allow_float,
+									   BasicBlock *lhsbb, BasicBlock *rhsbb )
 {
 	if ( self.is_lvalue || other.is_lvalue )
 	{
@@ -136,22 +137,26 @@ void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &oth
 			{
 				if ( lsign && !rsign )  // l < r; l -> r
 				{
+					if ( lhsbb ) Builder.SetInsertPoint( lhsbb );
 					self.val = Builder.CreateIntCast( self.val, rhs->type, false );
 					self.type = other.type;
 				}
 				else if ( !lsign && rsign )
 				{
+					if ( rhsbb ) Builder.SetInsertPoint( rhsbb );
 					other.val = Builder.CreateIntCast( other.val, lhs->type, false );
 					other.type = self.type;
 				}
 			}
 			else if ( lbits < rbits )  // l < r; l -> r
 			{
+				if ( lhsbb ) Builder.SetInsertPoint( lhsbb );
 				self.val = Builder.CreateIntCast( self.val, rhs->type, rsign );
 				self.type = other.type;
 			}
 			else
 			{
+				if ( rhsbb ) Builder.SetInsertPoint( rhsbb );
 				other.val = Builder.CreateIntCast( other.val, lhs->type, rsign );
 				other.type = self.type;
 			}
@@ -163,11 +168,13 @@ void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &oth
 
 			if ( ilhs )
 			{
+				if ( lhsbb ) Builder.SetInsertPoint( lhsbb );
 				self.val = ilhs->is_signed ? Builder.CreateSIToFP( self.val, rhs->type ) : Builder.CreateUIToFP( self.val, rhs->type );
 				self.type = other.type;
 			}
 			else if ( irhs )
 			{
+				if ( rhsbb ) Builder.SetInsertPoint( rhsbb );
 				other.val = irhs->is_signed ? Builder.CreateSIToFP( other.val, lhs->type ) : Builder.CreateUIToFP( other.val, lhs->type );
 				other.type = self.type;
 			}
@@ -178,11 +185,13 @@ void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &oth
 
 				if ( lbits < rbits )  // l -> r
 				{
+					if ( lhsbb ) Builder.SetInsertPoint( lhsbb );
 					self.val = Builder.CreateFPCast( self.val, rhs->type );
 					self.type = other.type;
 				}
 				else  // r -> l;
 				{
+					if ( rhsbb ) Builder.SetInsertPoint( rhsbb );
 					other.val = Builder.CreateFPCast( other.val, lhs->type );
 					other.type = self.type;
 				}
@@ -199,6 +208,38 @@ void QualifiedValue::cast_binary_expr( QualifiedValue &self, QualifiedValue &oth
 	}
 }
 
+void QualifiedValue::cast_ternary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node,
+										BasicBlock *lhsbb, BasicBlock *rhsbb )
+{
+	if ( self.type->is<mty::Arithmetic>() && other.type->is<mty::Arithmetic>() )
+	{
+		cast_binary_expr( self, other, node, true, lhsbb, rhsbb );
+	}
+	else if ( self.type->is<mty::Derefable>() && other.type->is<mty::Integer>() )
+	{
+		Builder.SetInsertPoint( rhsbb );
+		other.cast( self.type, node );
+	}
+	else if ( self.type->is<mty::Integer>() && other.type->is<mty::Derefable>() )
+	{
+		Builder.SetInsertPoint( lhsbb );
+		self.cast( other.type, node );
+	}
+	else if ( self.type->is<mty::Derefable>() && other.type->is<mty::Derefable>() )
+	{
+		Builder.SetInsertPoint( lhsbb );
+		self.cast( other.type, node );
+	}
+	else
+	{
+		infoList->add_msg(
+		  MSG_TYPE_ERROR,
+		  fmt( "incompatible operand types (`", self.type, "` and `", other.type, "`)" ),
+		  node );
+		HALT();
+	}
+}
+
 QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bool warn )
 {
 	// dbg( "CAST ", sharp( type ), " ===> ", sharp( dst ) );
@@ -207,6 +248,8 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bo
 	{
 		INTERNAL_ERROR();
 	}
+
+	this->ensure_is_ptr_if_deref();
 
 	if ( dst->is<mty::Arithmetic>() )
 	{
