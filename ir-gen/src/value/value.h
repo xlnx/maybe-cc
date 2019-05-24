@@ -247,8 +247,27 @@ public:
 		return *this;
 	}
 
+	QualifiedValue &ensure_is_ptr_if_deref()
+	{
+		if ( deref_into_ptr_unwrap( this->type, this->val ) )
+		{
+			Json::Value ast;
+			auto builder = DeclarationSpecifiers()
+							 .add_type( this->type.into_type(), ast )
+							 .into_type_builder( ast );
+			this->type = TypeView( std::make_shared<QualifiedType>(
+			  builder
+				.add_level( std::make_shared<mty::Pointer>( this->type->type ) )
+				.build() ) );
+		}
+		return *this;
+	}
+
+private:
+	static bool deref_into_ptr_unwrap( TypeView &view, Value *&val );
+
 public:
-	static bool cast_binary_ptr( QualifiedValue &self, QualifiedValue &other, Json::Value &node );
+	static bool cast_binary_ptr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool supress_warning = false );
 	static void cast_binary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool allow_float = true );
 	QualifiedValue &cast( const TypeView &dst, Json::Value &node, bool warn = true );
 };

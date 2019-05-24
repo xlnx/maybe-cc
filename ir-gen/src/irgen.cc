@@ -26,7 +26,7 @@ JumpTable<NodeHandler> handlers = {
 		  auto type = decl.type;
 		  auto name = decl.name.unwrap();
 
-		  //  dbg( "in function_definition: ", decl );
+		  dbg( "=== Function ", name, " ===" );
 
 		  if ( !type.is<mty::Function>() )
 		  {
@@ -180,7 +180,7 @@ JumpTable<NodeHandler> handlers = {
 			  INTERNAL_ERROR( fmt( "\nLLVM Verify Function Failed:\n", fn_err ) );
 		  }
 
-		  dbg( symTable );
+		  //   dbg( symTable );
 		  symTable.pop();
 
 		  return VoidType{};
@@ -289,13 +289,13 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	}
 	catch ( std::exception &_ )
 	{
-		dbg( symTable );
+		// dbg( symTable );
 		globObjects.pop();
 		symTable.pop();
 		throw;
 	}
 
-	dbg( symTable );
+	// dbg( symTable );
 	globObjects.pop();
 	symTable.pop();
 

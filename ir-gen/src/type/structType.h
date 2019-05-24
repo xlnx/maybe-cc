@@ -9,18 +9,25 @@ struct Struct : Structural
 {
 	static constexpr auto self_type = TypeName::StructType;
 
-	mutable std::vector<QualifiedDecl> sel_comps;
-	mutable std::map<std::string, std::pair<QualifiedType, ConstantInt *>> comps;
+	struct Declaration
+	{
+		std::vector<QualifiedDecl> sel_comps;
+		std::map<std::string, std::pair<QualifiedType, ConstantInt *>> comps;
+	};
+
+	std::shared_ptr<Declaration> decl;
 	Option<std::string> name;
 
 	Struct() :
-	  Structural( StructType::create( TheContext ) )
+	  Structural( StructType::create( TheContext ) ),
+	  decl( std::make_shared<Declaration>() )
 	{
 		type_name = self_type;
 	}
 
 	Struct( const std::string &name ) :
-	  Structural( StructType::create( TheContext, "struct." + name ) )
+	  Structural( StructType::create( TheContext, "struct." + name ) ),
+	  decl( std::make_shared<Declaration>() )
 	{
 		type_name = self_type;
 		this->name = name;
@@ -33,7 +40,7 @@ struct Struct : Structural
 			infoList->add_msg( MSG_TYPE_ERROR, fmt( "`struct ", name.unwrap(), "` redefined" ), ast );
 			HALT();
 		}
-		sel_comps = comps;
+		this->decl->sel_comps = comps;
 		static_cast<llvm::StructType *>( this->type )->setBody( map_comp( comps ) );
 		unsigned index = 0;
 		for ( auto &comp : comps )
@@ -42,7 +49,7 @@ struct Struct : Structural
 			  Constant::getIntegerValue(
 				TypeView::getIntTy( false )->type,
 				APInt( 32, uint64_t( index++ ), false ) ) );
-			this->comps.emplace(
+			this->decl->comps.emplace(
 			  comp.name.unwrap(),
 			  std::make_pair( comp.type, ind ) );
 		}
@@ -50,9 +57,9 @@ struct Struct : Structural
 
 	const std::pair<QualifiedType, ConstantInt *> &get_member( const std::string &member, Json::Value &ast ) const
 	{
-		if ( this->comps.find( member ) != this->comps.end() )
+		if ( this->decl->comps.find( member ) != this->decl->comps.end() )
 		{
-			return this->comps.find( member )->second;
+			return this->decl->comps.find( member )->second;
 		}
 		else
 		{

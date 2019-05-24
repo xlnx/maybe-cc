@@ -270,33 +270,41 @@ int Declaration::reg()
 		  } ) },
 		{ "struct_or_union_specifier", pack_fn<bool, QualifiedType>( []( Json::Value &node, bool const &curr_scope ) -> QualifiedType {
 			  auto &children = node[ "children" ];
+			  Option<std::string> name;
+			  if ( children[ 1 ][ 1 ].asCString()[ 0 ] != '{' )
+			  {
+				  name = children[ 1 ][ 1 ].asString();
+			  }
 
 			  auto struct_or_union = *children[ 0 ][ 1 ].asCString();
 			  if ( struct_or_union == 's' )
 			  {
 				  if ( children.size() < 3 )
 				  {
-					  auto name = children[ 1 ][ 1 ].asString();
-					  return forward_decl<mty::Struct>( name, "struct." + name, curr_scope, node );
+					  return forward_decl<mty::Struct>( name.unwrap(), "struct." + name.unwrap(), curr_scope, node );
 				  }
 				  else
 				  {
-					  auto la = children[ 1 ][ 0 ].asString();
-					  auto has_id = la == "IDENTIFIER";
-
-					  auto struct_ty = has_id ? std::make_shared<mty::Struct>( children[ 1 ][ 1 ].asString() ) : std::make_shared<mty::Struct>();
+					  auto type = ( [&] {
+						  if ( name.is_some() )
+						  {
+							  return forward_decl<mty::Struct>( name.unwrap(), "struct." + name.unwrap(), curr_scope, node );
+						  }
+						  else
+						  {
+							  return QualifiedType( std::make_shared<mty::Struct>() );
+						  }
+					  } )();
+					  auto struct_ty = type.as<mty::Struct>();
 
 					  {
-						  auto decls = get_structural_decl( children[ has_id ? 3 : 2 ] );
+						  auto decls = get_structural_decl( children[ name.is_some() ? 3 : 2 ] );
 						  struct_ty->set_body( decls, node );
 					  }
 
-					  auto type = QualifiedType( struct_ty );
-
-					  if ( has_id )
+					  if ( name.is_some() )
 					  {  // struct A without typedefs is named "struct.A"
-						  auto name = children[ 1 ][ 1 ].asString();
-						  auto fullName = "struct." + name;
+						  auto fullName = "struct." + name.unwrap();
 
 						  fix_forward_decl( fullName, type );
 					  }
@@ -308,27 +316,30 @@ int Declaration::reg()
 			  {
 				  if ( children.size() < 3 )
 				  {
-					  auto name = children[ 1 ][ 1 ].asString();
-					  return forward_decl<mty::Union>( name, "union." + name, curr_scope, node );
+					  return forward_decl<mty::Union>( name.unwrap(), "union." + name.unwrap(), curr_scope, node );
 				  }
 				  else
 				  {
-					  auto la = children[ 1 ][ 0 ].asString();
-					  auto has_id = la == "IDENTIFIER";
-
-					  auto union_ty = has_id ? std::make_shared<mty::Union>( children[ 1 ][ 1 ].asString() ) : std::make_shared<mty::Union>();
+					  auto type = ( [&] {
+						  if ( name.is_some() )
+						  {
+							  return forward_decl<mty::Union>( name.unwrap(), "union." + name.unwrap(), curr_scope, node );
+						  }
+						  else
+						  {
+							  return QualifiedType( std::make_shared<mty::Union>() );
+						  }
+					  } )();
+					  auto union_ty = type.as<mty::Union>();
 
 					  {
-						  auto decls = get_structural_decl( children[ has_id ? 3 : 2 ] );
+						  auto decls = get_structural_decl( children[ name.is_some() ? 3 : 2 ] );
 						  union_ty->set_body( decls, node );
 					  }
 
-					  auto type = QualifiedType( union_ty );
-
-					  if ( has_id )
+					  if ( name.is_some() )
 					  {  // struct A without typedefs is named "struct.A"
-						  auto name = children[ 1 ][ 1 ].asString();
-						  auto fullName = "union." + name;
+						  auto fullName = "union." + name.unwrap();
 
 						  fix_forward_decl( fullName, type );
 					  }

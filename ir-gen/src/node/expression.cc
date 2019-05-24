@@ -32,6 +32,11 @@ static QualifiedValue pos( QualifiedValue &val, Json::Value &ast )
 	return val;
 }
 
+static inline std::string value_mark( const QualifiedValue &val )
+{
+	return val.is_rvalue() ? "R" : "L";
+}
+
 static QualifiedValue neg( QualifiedValue &val, Json::Value &ast )
 {
 	if ( !val.is_rvalue() ) INTERNAL_ERROR();
@@ -66,7 +71,7 @@ static QualifiedValue logical_not( QualifiedValue &val, Json::Value &ast )
 {
 	if ( !val.is_rvalue() ) INTERNAL_ERROR();
 	auto &type = val.get_type();
-	if ( !type->is<mty::Arithmetic>() )
+	if ( !type->is<mty::Arithmetic>() && !type->is<mty::Pointer>() )
 	{
 		infoList->add_msg(
 		  MSG_TYPE_ERROR,
@@ -114,9 +119,26 @@ static QualifiedValue sub( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value
 	{
 		return lhs.value( ast[ "children" ][ 0 ] ).offset( neg( rhs, ast ).get(), ast[ "children" ][ 0 ] );
 	}
-	else if ( lhs.get_type()->is<mty::Integer>() && rhs.get_type()->is<mty::Derefable>() )
+	else if ( lhs.get_type()->is<mty::Derefable>() && rhs.get_type()->is<mty::Derefable>() )
 	{
-		return rhs.value( ast[ "children" ][ 2 ] ).offset( neg( lhs, ast ).get(), ast[ "children" ][ 2 ] );
+		lhs.ensure_is_ptr_if_deref();
+		rhs.ensure_is_ptr_if_deref();
+
+		if ( lhs.get_type().is_same_discard_qualifiers( rhs.get_type() ) )
+		{
+			auto diff = Builder.CreatePtrDiff(
+			  lhs.value( ast[ "children" ][ 0 ] ).get(),
+			  rhs.value( ast[ "children" ][ 2 ] ).get() );
+			return QualifiedValue( TypeView::getLongTy( true ), diff );
+		}
+		else
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "`", lhs.get_type(), "` and `", rhs.get_type(), "` are not pointer to compatible types" ),
+			  ast );
+			HALT();
+		}
 	}
 	else
 	{
@@ -221,7 +243,7 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 			 if ( !QualifiedValue::cast_binary_ptr( lhs, rhs, ast ) )
 			 {
 				 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-				 if ( auto itype = type->as<mty::Integer>() )
+				 if ( auto itype = lhs.get_type()->as<mty::Integer>() )
 				 {
 					 if ( itype->is_signed )
 					 {
@@ -247,7 +269,7 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 			 if ( !QualifiedValue::cast_binary_ptr( lhs, rhs, ast ) )
 			 {
 				 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-				 if ( auto itype = type->as<mty::Integer>() )
+				 if ( auto itype = lhs.get_type()->as<mty::Integer>() )
 				 {
 					 if ( itype->is_signed )
 					 {
@@ -273,7 +295,7 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 			 if ( !QualifiedValue::cast_binary_ptr( lhs, rhs, ast ) )
 			 {
 				 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-				 if ( auto itype = type->as<mty::Integer>() )
+				 if ( auto itype = lhs.get_type()->as<mty::Integer>() )
 				 {
 					 if ( itype->is_signed )
 					 {
@@ -299,7 +321,7 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 			 if ( !QualifiedValue::cast_binary_ptr( lhs, rhs, ast ) )
 			 {
 				 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-				 if ( auto itype = type->as<mty::Integer>() )
+				 if ( auto itype = lhs.get_type()->as<mty::Integer>() )
 				 {
 					 if ( itype->is_signed )
 					 {
@@ -323,10 +345,10 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 
 		{ "==", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 			 auto &type = TypeView::getBoolTy();
-			 if ( !QualifiedValue::cast_binary_ptr( lhs, rhs, ast ) )
+			 if ( !QualifiedValue::cast_binary_ptr( lhs, rhs, ast, true ) )
 			 {
 				 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-				 if ( auto itype = type->as<mty::Integer>() )
+				 if ( auto itype = lhs.get_type()->as<mty::Integer>() )
 				 {
 					 return QualifiedValue( type, Builder.CreateICmpEQ( lhs.get(), rhs.get() ) );
 				 }
@@ -342,10 +364,10 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 		 } },
 		{ "!=", []( QualifiedValue &lhs, QualifiedValue &rhs, Json::Value &ast ) -> QualifiedValue {
 			 auto &type = TypeView::getBoolTy();
-			 if ( !QualifiedValue::cast_binary_ptr( lhs, rhs, ast ) )
+			 if ( !QualifiedValue::cast_binary_ptr( lhs, rhs, ast, true ) )
 			 {
 				 QualifiedValue::cast_binary_expr( lhs, rhs, ast );
-				 if ( auto itype = type->as<mty::Integer>() )
+				 if ( auto itype = lhs.get_type()->as<mty::Integer>() )
 				 {
 					 return QualifiedValue( type, Builder.CreateICmpNE( lhs.get(), rhs.get() ) );
 				 }
@@ -376,9 +398,12 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 
 	if ( __.find( op ) != __.end() )
 	{
-		// dbg( lhs.get_type(), lhs.is_rvalue(), " ", op, " ", rhs.get_type(), rhs.is_rvalue() );
+		auto beg = fmt( sharp( lhs.get_type(), value_mark( lhs ) ), " ",
+						sharp( op ), " ",
+						sharp( rhs.get_type(), value_mark( rhs ) ) );
 		auto res = __[ op ]( lhs, rhs, node );
-		// dbg( res.get_type(), res.is_rvalue() );
+		// dbg( beg, " ==> ",
+		// 	 sharp( res.get_type(), value_mark( res ) ) );
 		return res;
 	}
 	else
@@ -390,6 +415,11 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 int Expression::reg()
 {
 	static decltype( handlers ) expr = {
+		{ "expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
+			  auto &children = node[ "children" ];
+			  codegen( children[ 0 ] );
+			  return get<QualifiedValue>( codegen( children[ 2 ] ) );
+		  } ) },
 		{ "assignment_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
 			  auto &children = node[ "children" ];
 			  auto lhs = get<QualifiedValue>( codegen( children[ 0 ] ) );
@@ -477,9 +507,11 @@ int Expression::reg()
 
 				  if ( __.find( key ) != __.end() )
 				  {
-					  //   dbg( key, " ", val.get_type(), val.is_rvalue() );
+					  auto beg = fmt( sharp( key ), " ",
+									  sharp( val.get_type(), value_mark( val ) ) );
 					  auto res = __[ key ]( children, val, node );
-					  //   dbg( res.get_type(), res.is_rvalue() );
+					  //   dbg( beg, " ==> ",
+					  // 	   sharp( res.get_type(), value_mark( res ) ) );
 					  return res;
 				  }
 				  else
@@ -562,15 +594,34 @@ int Expression::reg()
 						   }
 					   }
 
+					   auto view = val.get_type();
+					   if ( !view->is<mty::Function>() )
+					   {
+						   if ( view->is<mty::Pointer>() )
+						   {
+							   val.value( children[ 0 ] ).deref( children[ 0 ] );
+						   }
+						   if ( !val.get_type()->is<mty::Function>() )
+						   {
+							   infoList->add_msg(
+								 MSG_TYPE_ERROR,
+								 fmt( "called object type `", view, "` is not a function or function pointer" ),
+								 children[ 0 ] );
+							   HALT();
+						   }
+					   }
+
 					   return val.call( args, node );
 				   } }
 			  };
 
 			  if ( __.find( key ) != __.end() )
 			  {
-				//   dbg( val.get_type(), val.is_rvalue(), " ", key, " " );
+				  auto beg = fmt( sharp( val.get_type(), value_mark( val ) ), " ",
+								  sharp( key ) );
 				  auto res = __[ key ]( children, val, node );
-				//   dbg( res.get_type(), res.is_rvalue() );
+				  //   dbg( beg, " ==> ",
+				  // 	   sharp( res.get_type(), value_mark( res ) ) );
 				  return res;
 			  }
 			  else
@@ -872,7 +923,7 @@ int Expression::reg()
 				  auto andNext = BasicBlock::Create( TheContext, "and.next", fn, andEnd );
 
 				  Builder.CreateCondBr( lhs.get(), andNext, andEnd );
-				  auto bb = Builder.GetInsertBlock();
+				  auto bb0 = Builder.GetInsertBlock();
 
 				  Builder.SetInsertPoint( andNext );
 				  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) )
@@ -881,11 +932,12 @@ int Expression::reg()
 								 TypeView::getBoolTy(),
 								 children[ 2 ] );
 				  Builder.CreateBr( andEnd );
-				  Builder.SetInsertPoint( andEnd );
+				  auto bb1 = Builder.GetInsertBlock();
 
+				  Builder.SetInsertPoint( andEnd );
 				  auto phi = Builder.CreatePHI( TypeView::getBoolTy()->type, 2, "phi" );
-				  phi->addIncoming( lhs.get(), bb );
-				  phi->addIncoming( rhs.get(), andNext );
+				  phi->addIncoming( lhs.get(), bb0 );
+				  phi->addIncoming( rhs.get(), bb1 );
 
 				  return QualifiedValue( TypeView::getBoolTy(), phi );
 			  }
@@ -903,7 +955,7 @@ int Expression::reg()
 				  auto orNext = BasicBlock::Create( TheContext, "or.next", fn, orEnd );
 
 				  Builder.CreateCondBr( lhs.get(), orEnd, orNext );
-				  auto bb = Builder.GetInsertBlock();
+				  auto bb0 = Builder.GetInsertBlock();
 
 				  Builder.SetInsertPoint( orNext );
 				  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) )
@@ -912,11 +964,12 @@ int Expression::reg()
 								 TypeView::getBoolTy(),
 								 children[ 2 ] );
 				  Builder.CreateBr( orEnd );
-				  Builder.SetInsertPoint( orEnd );
+				  auto bb1 = Builder.GetInsertBlock();
 
+				  Builder.SetInsertPoint( orEnd );
 				  auto phi = Builder.CreatePHI( TypeView::getBoolTy()->type, 2, "phi" );
-				  phi->addIncoming( lhs.get(), bb );
-				  phi->addIncoming( rhs.get(), orNext );
+				  phi->addIncoming( lhs.get(), bb0 );
+				  phi->addIncoming( rhs.get(), bb1 );
 
 				  return QualifiedValue( TypeView::getBoolTy(), phi );
 			  }

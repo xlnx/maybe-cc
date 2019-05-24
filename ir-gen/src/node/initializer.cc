@@ -197,7 +197,7 @@ static Constant *make_constant_struct( const mty::Struct *struct_ty, InitList &i
 									   std::size_t &curr )
 {
 	std::vector<Constant *> elems;
-	auto &sel_comps = struct_ty->sel_comps;
+	auto &sel_comps = struct_ty->decl->sel_comps;
 
 	for ( auto &comp : sel_comps )
 	{
@@ -221,7 +221,7 @@ static Constant *make_constant_union( const mty::Union *union_ty, InitList &init
 									  std::size_t &curr )
 {
 	std::vector<Constant *> elems;
-	auto &comp = union_ty->first_comp;
+	auto &comp = union_ty->decl->first_comp;
 
 	if ( comp.is_some() )
 	{
@@ -484,7 +484,7 @@ static void make_local_struct( QualifiedValue &agg, InitList &init,
 							   std::size_t &curr )
 {
 	auto struct_ty = agg.get_type()->as<mty::Struct>();
-	auto &sel_comps = struct_ty->sel_comps;
+	auto &sel_comps = struct_ty->decl->sel_comps;
 
 	Json::Value ast;
 
@@ -504,7 +504,7 @@ static void make_local_union( QualifiedValue &agg, InitList &init,
 							  std::size_t &curr )
 {
 	auto union_ty = agg.get_type()->as<mty::Union>();
-	auto &comp = union_ty->first_comp;
+	auto &comp = union_ty->decl->first_comp;
 
 	Json::Value ast;
 

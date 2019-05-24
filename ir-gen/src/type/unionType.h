@@ -11,18 +11,25 @@ struct Union : Structural
 {
 	static constexpr auto self_type = TypeName::StructType;
 
-	Option<QualifiedDecl> first_comp;
-	std::map<std::string, QualifiedType> comps;
+	struct Declaration
+	{
+		Option<QualifiedDecl> first_comp;
+		std::map<std::string, QualifiedType> comps;
+	};
+
+	std::shared_ptr<Declaration> decl;
 	Option<std::string> name;
 
 	Union() :
-	  Structural( StructType::create( TheContext ) )
+	  Structural( StructType::create( TheContext ) ),
+	  decl( std::make_shared<Declaration>() )
 	{
 		type_name = self_type;
 	}
 
 	Union( const std::string &name ) :
-	  Structural( StructType::create( TheContext, "union." + name ) )
+	  Structural( StructType::create( TheContext, "union." + name ) ),
+	  decl( std::make_shared<Declaration>() )
 	{
 		type_name = self_type;
 		this->name = name;
@@ -38,22 +45,22 @@ struct Union : Structural
 
 		if ( comps.size() > 0 )
 		{
-			first_comp = comps[ 0 ];
+			decl->first_comp = comps[ 0 ];
 		}
 
 		static_cast<llvm::StructType *>( this->type )->setBody( map_comp( comps ) );
 
 		for ( auto &comp : comps )
 		{
-			this->comps.emplace( comp.name.unwrap(), comp.type );
+			this->decl->comps.emplace( comp.name.unwrap(), comp.type );
 		}
 	}
 
 	const QualifiedType &get_member( const std::string &member, Json::Value &ast ) const
 	{
-		if ( this->comps.find( member ) != this->comps.end() )
+		if ( this->decl->comps.find( member ) != this->decl->comps.end() )
 		{
-			return this->comps.find( member )->second;
+			return this->decl->comps.find( member )->second;
 		}
 		else
 		{

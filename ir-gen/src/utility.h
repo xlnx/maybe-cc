@@ -136,26 +136,6 @@ using JumpTable = std::map<const char *, std::function<T>, __impl::str_cmp_op>;
 template <typename T>
 using LookupTable = std::map<const char *, T, __impl::str_cmp_op>;
 
-inline bool curr_bb_has_ret()
-{
-	extern llvm::IRBuilder<> Builder;
-
-	auto bb = Builder.GetInsertBlock();
-	if ( !bb->empty() )
-	{
-		auto inst = &bb->back();
-		if ( llvm::dyn_cast_or_null<llvm::ReturnInst>( inst ) ||
-			 ( [=] {
-				 auto br_inst = llvm::dyn_cast_or_null<llvm::BranchInst>( inst );
-				 return br_inst && !br_inst->isConditional();
-			 } )() )
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
 inline bool secure_exec( const std::function<void()> &wrapped )
 {
 	using namespace ffi;
@@ -181,4 +161,31 @@ inline bool secure_exec( const std::function<void()> &wrapped )
 						   std::string( "internal error: ir-gen crashed with unknown error." ) );
 		return false;
 	}
+}
+
+namespace __impl
+{
+template <typename T>
+std::string cat( T &&t )
+{
+	return fmt( std::forward<T>( t ) );
+}
+
+template <typename T, typename... Args>
+std::string cat( T &&t, Args &&... args )
+{
+	return fmt( std::forward<T>( t ), ", ", cat( std::forward<Args>( args )... ) );
+}
+}  // namespace __impl
+
+template <typename... Args>
+std::string curly( Args &&... args )
+{
+	return fmt( "(", __impl::cat( std::forward<Args>( args )... ), ")" );
+}
+
+template <typename... Args>
+std::string sharp( Args &&... args )
+{
+	return fmt( "<", __impl::cat( std::forward<Args>( args )... ), ">" );
 }
