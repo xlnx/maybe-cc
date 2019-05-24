@@ -376,9 +376,9 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 
 	if ( __.find( op ) != __.end() )
 	{
-		dbg( lhs.get_type(), lhs.is_rvalue(), " ", op, " ", rhs.get_type(), rhs.is_rvalue() );
+		// dbg( lhs.get_type(), lhs.is_rvalue(), " ", op, " ", rhs.get_type(), rhs.is_rvalue() );
 		auto res = __[ op ]( lhs, rhs, node );
-		dbg( res.get_type(), res.is_rvalue() );
+		// dbg( res.get_type(), res.is_rvalue() );
 		return res;
 	}
 	else
@@ -477,9 +477,9 @@ int Expression::reg()
 
 				  if ( __.find( key ) != __.end() )
 				  {
-					  dbg( key, " ", val.get_type(), val.is_rvalue() );
+					  //   dbg( key, " ", val.get_type(), val.is_rvalue() );
 					  auto res = __[ key ]( children, val, node );
-					  dbg( res.get_type(), res.is_rvalue() );
+					  //   dbg( res.get_type(), res.is_rvalue() );
 					  return res;
 				  }
 				  else
@@ -568,9 +568,9 @@ int Expression::reg()
 
 			  if ( __.find( key ) != __.end() )
 			  {
-				  dbg( val.get_type(), val.is_rvalue(), " ", key, " " );
+				//   dbg( val.get_type(), val.is_rvalue(), " ", key, " " );
 				  auto res = __[ key ]( children, val, node );
-				  dbg( res.get_type(), res.is_rvalue() );
+				//   dbg( res.get_type(), res.is_rvalue() );
 				  return res;
 			  }
 			  else
@@ -765,6 +765,11 @@ int Expression::reg()
 			  auto lhs = get<QualifiedValue>( codegen( children[ 0 ] ) );
 			  auto rhs = get<QualifiedValue>( codegen( children[ 2 ] ) );
 			  return handle_binary_expr( op, lhs, rhs, node );
+		  } ) },
+		{ "conditional_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
+			  TODO( "unimplemented()" );
+			  auto &children = node[ "children" ];
+			  return get<QualifiedValue>( codegen( children[ 0 ] ) );
 		  } ) }
 		/*
 		{ "conditional_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {

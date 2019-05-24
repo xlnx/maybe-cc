@@ -36,6 +36,28 @@ JumpTable<NodeHandler> handlers = {
 
 		  auto fn_type = type.as<mty::Function>();
 
+		  if ( auto sym = symTable.find_in_scope( name ) )
+		  {
+			  if ( sym->is_type() )
+			  {
+				  infoList->add_msg(
+					MSG_TYPE_ERROR,
+					fmt( "redefination of `", name, "` as different kind of symbol" ),
+					node );
+				  HALT();
+			  }
+			  auto val = sym->as_value();
+			  auto view = TypeView( std::make_shared<QualifiedType>( type ) );
+			  if ( !val.get_type().is_same( view ) )
+			  {
+				  infoList->add_msg(
+					MSG_TYPE_ERROR,
+					fmt( "forward declaration of `", name, "` conflicts" ),
+					node );
+				  HALT();
+			  }
+		  }
+
 		  auto fn = TheModule->getFunction( name );
 
 		  if ( !fn )
@@ -80,7 +102,7 @@ JumpTable<NodeHandler> handlers = {
 			  auto &name = arg.name.unwrap();
 			  auto alloc = Builder.CreateAlloca( arg.type->type, 0, name );
 			  Builder.CreateStore( fn_arg, alloc );
-			  symTable.insert(
+			  symTable.insert_if(
 				name,
 				QualifiedValue(
 				  std::make_shared<QualifiedType>( arg.type ),
@@ -233,6 +255,7 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	}
 
 	symTable.push();
+	globObjects.push();
 
 	dbg( "building va_list" );
 
@@ -251,11 +274,11 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 				  .build();
 	dbg( type );
 
-	symTable.insert( "__builtin_va_list", type, dummy );
+	symTable.insert_if( "__builtin_va_list", type, dummy );
 
 	dbg( "enter global" );
 
-	StackTrace _;
+	// StackTrace _;
 
 	try
 	{
@@ -267,11 +290,13 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	catch ( std::exception &_ )
 	{
 		dbg( symTable );
+		globObjects.pop();
 		symTable.pop();
 		throw;
 	}
 
 	dbg( symTable );
+	globObjects.pop();
 	symTable.pop();
 
 	if ( is_debug_mode )

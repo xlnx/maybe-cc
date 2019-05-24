@@ -54,7 +54,7 @@ bool QualifiedValue::cast_binary_ptr( QualifiedValue &self, QualifiedValue &othe
 			if ( !self.type.is_same_discard_qualifiers( other.type ) )
 			{
 				infoList->add_msg(
-				  MSG_TYPE_ERROR,
+				  MSG_TYPE_WARNING,
 				  fmt( "comparison of distinct pointer types (`", self.type,
 					   "` and `", other.type,
 					   "`)" ),
@@ -351,6 +351,7 @@ QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bo
 				  fmt( "incompatible integer to pointer conversion casting to `", dst, "` from `", this->type, "`" ),
 				  node );
 			}
+			this->type = dst;
 			this->val = Builder.CreateIntToPtr( this->val, dst->type );
 		}
 		else

@@ -71,6 +71,19 @@ private:
 		return true;
 	}
 
+	bool is_same_from_index( const QualifiedType &other, std::size_t idx ) const
+	{
+		do
+		{
+			if ( !this->list[ idx ]->is_same_without_cv( *other.list[ idx ] ) ) return false;
+			if ( !( int( this->list[ idx ]->is_const ) == int( other.list[ idx ]->is_const ) &&
+					int( this->list[ idx ]->is_volatile ) == int( other.list[ idx ]->is_volatile ) ) ) return false;
+
+		} while ( idx-- != 0 );
+
+		return true;
+	}
+
 public:
 	QualifiedType( const std::shared_ptr<mty::Qualified> &type )
 	{
@@ -177,6 +190,13 @@ public:
 	// 	return this->type->is_same_without_cv_from_index(
 	// 	  *other.type, index );
 	// }
+
+	bool is_same( const TypeView &other ) const
+	{
+		if ( this->index != other.index ) return false;
+		return this->type->is_same_from_index(
+		  *other.type, index );
+	}
 
 	bool is_same_discard_qualifiers( const TypeView &other ) const
 	{

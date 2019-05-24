@@ -75,7 +75,7 @@ QualifiedType forward_decl( const std::string &name, const std::string &fullName
 {
 	static_assert( std::is_base_of<mty::Qualified, T>::value, "" );
 
-	if ( auto sym = curr_scope ? symTable.findThisLevel( fullName ) : symTable.find( fullName ) )
+	if ( auto sym = curr_scope ? symTable.find_in_scope( fullName ) : symTable.find( fullName ) )
 	{
 		dbg( "found: ", fullName );
 		if ( sym->is_type() ) return sym->as_type();
@@ -85,7 +85,7 @@ QualifiedType forward_decl( const std::string &name, const std::string &fullName
 	{
 		dbg( "not found: ", fullName );
 		auto ty = QualifiedType( std::make_shared<T>( name ) );
-		symTable.insert( fullName, ty, ast );
+		symTable.insert_if( fullName, ty, ast );
 		return ty;
 	}
 }
@@ -93,5 +93,5 @@ QualifiedType forward_decl( const std::string &name, const std::string &fullName
 inline void fix_forward_decl( const std::string &fullName, const QualifiedType &type )
 {
 	Json::Value ast;
-	symTable.insert( fullName, type, ast, true );
+	symTable.insert( fullName, type, ast );
 }

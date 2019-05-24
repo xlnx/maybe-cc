@@ -1,5 +1,4 @@
-#include "common.h"
-#include "symbolMap.h"
+#include "global.h"
 
 LLVMContext TheContext;
 IRBuilder<> Builder( TheContext );
@@ -14,7 +13,8 @@ std::map<std::string, BasicBlock *> labelJump;
 std::stack<std::map<ConstantInt *, BasicBlock *>> caseList;
 std::stack<std::pair<bool, BasicBlock *>> defaultList;
 MsgList *infoList;
-SymbolTable symTable = SymbolTable();
+ScopedMap<Symbol> symTable;
+ScopedMap<Global> globObjects;
 bool stack_trace = false;
 std::string decl_indent;
 bool is_debug_mode = false;

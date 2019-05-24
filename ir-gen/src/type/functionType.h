@@ -51,26 +51,26 @@ struct Function : Address
 		return std::make_shared<Function>( *this );
 	}
 
-	static void declare( const std::pair<std::shared_ptr<QualifiedType>, Value *> &val, const std::string &name )
-	{
-		decls().emplace( name, val );
-	}
+	// static void declare( const std::pair<std::shared_ptr<QualifiedType>, Value *> &val, const std::string &name )
+	// {
+	// 	decls().emplace( name, val );
+	// }
 
-	static Option<const std::pair<std::shared_ptr<QualifiedType>, Value *> *> get( const std::string &name )
-	{
-		if ( decls().find( name ) != decls().end() )
-		{
-			return &decls()[ name ];
-		}
-		return Option<const std::pair<std::shared_ptr<QualifiedType>, Value *> *>();
-	}
+	// static Option<const std::pair<std::shared_ptr<QualifiedType>, Value *> *> get( const std::string &name )
+	// {
+	// 	if ( decls().find( name ) != decls().end() )
+	// 	{
+	// 		return &decls()[ name ];
+	// 	}
+	// 	return Option<const std::pair<std::shared_ptr<QualifiedType>, Value *> *>();
+	// }
 
 protected:
-	static std::map<std::string, std::pair<std::shared_ptr<QualifiedType>, Value *>> &decls()
-	{
-		static std::map<std::string, std::pair<std::shared_ptr<QualifiedType>, Value *>> __;
-		return __;
-	}
+	// static std::map<std::string, std::pair<std::shared_ptr<QualifiedType>, Value *>> &decls()
+	// {
+	// 	static std::map<std::string, std::pair<std::shared_ptr<QualifiedType>, Value *>> __;
+	// 	return __;
+	// }
 
 	bool impl_is_same_without_cv( const Qualified &other ) const override
 	{

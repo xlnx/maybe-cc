@@ -631,38 +631,38 @@ int Initializer::reg()
 						  };
 
 						  if ( declspec.has_attribute( SC_TYPEDEF ) )  // deal with typedef
-						  {
-							  if ( children.size() > 1 )  // decl with init
+						  {											   // make scoped typedef
+							  if ( children.size() > 1 )			   // decl with init
 							  {
 								  infoList->add_msg( MSG_TYPE_ERROR, "only variables can be initialized", child );
 								  HALT();
 							  }
 							  else
 							  {
-								  symTable.insert( name, type, children[ 0 ] );
+								  symTable.insert_if( name, type, children[ 0 ] );
 							  }
 						  }
 						  else
 						  {
-							  if ( !type.as<mty::Qualified>()->is_allocable() )
+							  if ( !type.as<mty::Qualified>()->is_allocable() )  // unallocable object
 							  {
 								  infoList->add_msg(
 									MSG_TYPE_ERROR,
 									fmt( "variable has incomplete type `", type, "`" ),
 									children[ 0 ] );
 							  }
-							  else if ( type.is<mty::Function>() )
-							  {  // function declaration
-								  if ( children.size() > 1 )
+							  else if ( type.is<mty::Function>() )  // is function (global link object)
+							  {										// check global scope for multi definations
+								  if ( children.size() > 1 )		// initializing a function
 								  {
 									  infoList->add_msg(
 										MSG_TYPE_ERROR,
 										fmt( "only variables can be initialized" ),
 										child );
 								  }
-								  else if ( declspec.has_attribute( SC_STATIC ) )
+								  else if ( declspec.has_attribute( SC_STATIC ) )  // static function declaration
 								  {
-									  if ( symTable.getLevel() > 0 )
+									  if ( symTable.get_scope() > 0 )  // error static function declaration not in global scope
 									  {
 										  infoList->add_msg(
 											MSG_TYPE_ERROR,
@@ -671,36 +671,34 @@ int Initializer::reg()
 										  HALT();
 									  }
 								  }
-								  auto fn = mty::Function::get( name );
-								  if ( fn.is_none() )
+								  auto ty = std::make_shared<QualifiedType>( type );
+								  if ( auto fn = globObjects.find( name ) )  // this function has forward declaration
 								  {
-									  auto ty = std::make_shared<QualifiedType>( type );
-									  auto fn_val = std::make_pair(
+									  auto fn_val = QualifiedValue( ty, fn->value.get() );
+									  globObjects.insert_if(
+										name,
+										Global( fn_val, declspec.has_attribute( SC_STATIC ) ),
+										children[ 0 ],
+										declare_global );
+									  symTable.insert( name, fn_val, children[ 0 ] );
+								  }
+								  else  // declare this function now and insert into global
+								  {
+									  auto fn_val = QualifiedValue(
 										ty,
-										// std::make_shared<QualifiedType>( type ),
 										Function::Create(
 										  static_cast<FunctionType *>( type.get()->type ),
 										  GlobalValue::ExternalLinkage, name, TheModule.get() ) );
-									  mty::Function::declare( fn_val, name );
-									  symTable.insert( name, QualifiedValue( ty, fn_val.second ), children[ 0 ] );
-								  }
-								  else
-								  {
-									  auto &fn_val = *fn.unwrap();
-									  if ( !fn_val.first->is_same_without_cv( type ) )
-									  {
-										  infoList->add_msg(
-											MSG_TYPE_ERROR,
-											fmt( "conflict declaration of function `", name, "`" ),
-											child );
-										  HALT();
-									  }
-									  symTable.insert( name, QualifiedValue( fn_val.first, fn_val.second ), children[ 0 ] );
+									  globObjects.insert_if(
+										name,
+										Global( fn_val, declspec.has_attribute( SC_STATIC ) ),
+										children[ 0 ],
+										declare_global );
+									  symTable.insert( name, fn_val, children[ 0 ] );
 								  }
 							  }
 							  else
 							  {  // variable declaration
-
 								  //   Value *init = nullptr;  // decl with init
 								  Option<InitItem> init;
 
@@ -730,8 +728,9 @@ int Initializer::reg()
 								  // deal with decl
 								  Value *alloc = nullptr;
 								  if ( declspec.has_attribute( SC_EXTERN ) ||
-									   declspec.has_attribute( SC_STATIC ) || symTable.getLevel() == 0 )
-								  {
+									   declspec.has_attribute( SC_STATIC ) || symTable.get_scope() == 0 )
+								  {  // this object is global
+
 									  Constant *cc = nullptr;
 									  uint64_t array_len;
 
@@ -758,25 +757,49 @@ int Initializer::reg()
 										  make_type_len( len );
 									  }
 
-									  auto linkage = GlobalVariable::CommonLinkage;
-									  if ( declspec.has_attribute( SC_EXTERN ) )
-									  {
-										  linkage = GlobalVariable::ExternalLinkage;
-									  }
-									  else
-									  {
-										  if ( declspec.has_attribute( SC_STATIC ) )
-										  {
-											  linkage = GlobalVariable::InternalLinkage;
-										  }
-										  else if ( cc )
-										  {
-											  linkage = GlobalVariable::ExternalWeakLinkage;
-										  }
-										  if ( !cc ) cc = ConstantAggregateZero::get( type->type );
-									  }
+									  Option<QualifiedValue> glob_val;
+									  auto ty = TypeView( std::make_shared<QualifiedType>( type ) );
 
-									  alloc = new GlobalVariable( *TheModule, type->type, false, linkage, cc );
+									  if ( auto glob = globObjects.find( name ) )  // this variable is already declared
+									  {
+										  alloc = glob->value.get();
+										  glob_val = QualifiedValue( ty, alloc, !type.is<mty::Address>() );
+										  globObjects.insert_if(
+											name,
+											Global( glob_val.unwrap(), declspec.has_attribute( SC_STATIC ), init.is_some() ),
+											children[ 0 ],
+											declare_global );
+									  }
+									  else  // this variable is not declared yet
+									  {
+										  auto linkage = GlobalVariable::CommonLinkage;
+										  if ( declspec.has_attribute( SC_EXTERN ) )  // select a linkage for this variable
+										  {
+											  linkage = GlobalVariable::ExternalLinkage;
+										  }
+										  else
+										  {
+											  if ( declspec.has_attribute( SC_STATIC ) )
+											  {
+												  linkage = GlobalVariable::InternalLinkage;
+											  }
+											  else if ( cc )
+											  {
+												  linkage = GlobalVariable::ExternalWeakLinkage;
+											  }
+											  if ( !cc ) cc = ConstantAggregateZero::get( type->type );
+										  }
+
+										  alloc = new GlobalVariable( *TheModule, type->type, false, linkage, cc );
+										  glob_val = QualifiedValue( ty, alloc, !type.is<mty::Address>() );
+										  TODO( "maybe not correct" );
+										  globObjects.insert_if(
+											name,
+											Global( glob_val.unwrap(), declspec.has_attribute( SC_STATIC ), init.is_some() ),
+											children[ 0 ],
+											declare_global );
+									  }
+									  symTable.insert( name, glob_val.unwrap(), children[ 0 ] );
 								  }
 								  else
 								  {  // stack allocated.
@@ -811,13 +834,13 @@ int Initializer::reg()
 											std::make_shared<QualifiedType>( type ), alloc, !type.is<mty::Address>() );
 										  make_local_init( ival, init.unwrap() );
 									  }
+									  symTable.insert_if(
+										name,
+										QualifiedValue(
+										  std::make_shared<QualifiedType>( type ), alloc, !type.is<mty::Address>() ),
+										children[ 0 ] );
 								  }
 								  alloc->setName( name );
-								  symTable.insert(
-									name,
-									QualifiedValue(
-									  std::make_shared<QualifiedType>( type ), alloc, !type.is<mty::Address>() ),
-									children[ 0 ] );
 							  }
 						  }
 					  }
