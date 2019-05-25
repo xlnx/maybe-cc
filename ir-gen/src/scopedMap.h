@@ -93,6 +93,10 @@ public:
 		{
 			if ( !cmp_when( str, *old, val, node ) ) return;
 		}
+		if ( smap.find( str ) != smap.end() )
+		{
+			smap.erase( smap.find( str ) );
+		}
 		smap.emplace( str, std::move( val ) );
 	}
 

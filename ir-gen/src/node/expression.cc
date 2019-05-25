@@ -49,7 +49,14 @@ static QualifiedValue neg( QualifiedValue &val, Json::Value &ast )
 		  ast );
 		HALT();
 	}
-	return QualifiedValue( type, Builder.CreateNeg( val.get() ) );
+	if ( type->is<mty::Integer>() )
+	{
+		return QualifiedValue( type, Builder.CreateNeg( val.get() ) );
+	}
+	else
+	{
+		return QualifiedValue( type, Builder.CreateFNeg( val.get() ) );
+	}
 }
 
 static QualifiedValue flip( QualifiedValue &val, Json::Value &ast )
@@ -402,8 +409,8 @@ static QualifiedValue handle_binary_expr( const char *op, QualifiedValue &lhs, Q
 						sharp( op ), " ",
 						sharp( rhs.get_type(), value_mark( rhs ) ) );
 		auto res = __[ op ]( lhs, rhs, node );
-		// dbg( beg, " ==> ",
-		// 	 sharp( res.get_type(), value_mark( res ) ) );
+		dbg( beg, " ==> ",
+			 sharp( res.get_type(), value_mark( res ) ) );
 		return res;
 	}
 	else
@@ -510,8 +517,8 @@ int Expression::reg()
 					  auto beg = fmt( sharp( key ), " ",
 									  sharp( val.get_type(), value_mark( val ) ) );
 					  auto res = __[ key ]( children, val, node );
-					  //   dbg( beg, " ==> ",
-					  // 	   sharp( res.get_type(), value_mark( res ) ) );
+					  dbg( beg, " ==> ",
+						   sharp( res.get_type(), value_mark( res ) ) );
 					  return res;
 				  }
 				  else
@@ -620,8 +627,8 @@ int Expression::reg()
 				  auto beg = fmt( sharp( val.get_type(), value_mark( val ) ), " ",
 								  sharp( key ) );
 				  auto res = __[ key ]( children, val, node );
-				  //   dbg( beg, " ==> ",
-				  // 	   sharp( res.get_type(), value_mark( res ) ) );
+				  dbg( beg, " ==> ",
+					   sharp( res.get_type(), value_mark( res ) ) );
 				  return res;
 			  }
 			  else

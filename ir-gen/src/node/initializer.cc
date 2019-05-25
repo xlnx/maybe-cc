@@ -763,7 +763,21 @@ int Initializer::reg()
 									  if ( auto glob = globObjects.find( name ) )  // this variable is already declared
 									  {
 										  alloc = glob->value.get();
+										  auto glob_alloc = static_cast<GlobalVariable *>( alloc );
 										  glob_val = QualifiedValue( ty, alloc, !type.is<mty::Address>() );
+										  auto is_allocated = glob->is_allocated;
+
+										  if ( !is_allocated )
+										  {
+											  if ( cc )
+											  {
+												  glob_alloc->setInitializer( cc );
+												  is_allocated = true;
+											  }
+										  }
+
+										  std::cout << init.is_some() << std::endl;
+
 										  if ( !declspec.has_attribute( SC_STATIC ) )
 										  {
 											  globObjects.insert_if(
@@ -785,8 +799,8 @@ int Initializer::reg()
 									  }
 									  else  // this variable is not declared yet
 									  {
-										  auto linkage = GlobalVariable::CommonLinkage;
-										  if ( declspec.has_attribute( SC_EXTERN ) )  // select a linkage for this variable
+										  auto linkage = GlobalVariable::ExternalWeakLinkage;  //CommonLinkage;
+										  if ( declspec.has_attribute( SC_EXTERN ) )		   // select a linkage for this variable
 										  {
 											  linkage = GlobalVariable::ExternalLinkage;
 										  }
@@ -805,7 +819,7 @@ int Initializer::reg()
 
 										  alloc = new GlobalVariable( *TheModule, type->type, false, linkage, cc );
 										  glob_val = QualifiedValue( ty, alloc, !type.is<mty::Address>() );
-										  TODO( "maybe not correct" );
+										  //   TODO( "maybe not correct" );
 										  globObjects.insert_if(
 											name,
 											Global( glob_val.unwrap(), declspec.has_attribute( SC_STATIC ), init.is_some() ),
