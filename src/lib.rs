@@ -1,3 +1,5 @@
+#![feature(exclusive_range_pattern)]
+
 extern crate clap;
 
 #[macro_use]
@@ -9,6 +11,9 @@ extern crate ref_thread_local;
 use clap::{App, Arg};
 
 use myrpg::*;
+
+mod lexer;
+use lexer::CLexer;
 
 mod prep;
 use prep::Preprocessor;
@@ -145,7 +150,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
 
     /* preprocessing */
     let preprocessor = Preprocessor::new();
-    let parser = LRParser::<C>::new();
+    let parser = LRParser::<C, CLexer>::new();
     let msg;
     unsafe {
         msg = init_be(if matches.is_present("dev") { 1 } else { 0 });
