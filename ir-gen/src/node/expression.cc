@@ -1029,8 +1029,29 @@ int Expression::reg()
 				  return QualifiedValue( lhs.get_type(), phi );
 				  //   return value;
 			  }
+			  else
+			  {
+				  if ( auto cc = dyn_cast_or_null<ConstantInt>( value.get() ) )
+				  {
+					  auto lhs = get<QualifiedValue>( codegen( children[ 2 ] ) )
+								   .value( children[ 2 ] )
+								   .ensure_is_ptr_if_deref();
+					  auto rhs = get<QualifiedValue>( codegen( children[ 4 ] ) )
+								   .value( children[ 4 ] )
+								   .ensure_is_ptr_if_deref();
+					  QualifiedValue::cast_ternary_expr( lhs, rhs, node );
 
-			  return value;
+					  return cc->getZExtValue() ? lhs : rhs;
+				  }
+				  else
+				  {
+					  infoList->add_msg(
+						MSG_TYPE_ERROR,
+						fmt( "must be constant" ),
+						children[ 0 ] );
+					  HALT();
+				  }
+			  }
 		  } ) }
 
 	};

@@ -57,18 +57,10 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 
 		if ( children.size() - an == 3 )
 		{  // w [ X ]
-			auto len_val = get<QualifiedValue>( codegen( children[ an + 1 ] ) );
+			auto len_val = get<QualifiedValue>( codegen( children[ an + 1 ] ) )
+							 .value( children[ an + 1 ] );
 
-			auto len = dyn_cast_or_null<Constant>( len_val.value( children[ an + 1 ] ).get() );
-			if ( !len )
-			{
-				infoList->add_msg( MSG_TYPE_ERROR, fmt( "array length must be constant" ), children[ an + 1 ] );
-				auto &type = TypeView::getLongTy( false );
-				len = Constant::getIntegerValue(
-				  type->type, APInt( type->as<mty::Integer>()->bits, 1, false ) );
-			}
-			std::size_t len_i = 1;
-			if ( !len->getType()->isIntegerTy() )
+			if ( !len_val.get_type()->is<mty::Integer>() )
 			{
 				infoList->add_msg(
 				  MSG_TYPE_ERROR,
@@ -77,7 +69,14 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 			}
 			else
 			{
-				auto ci = dyn_cast_or_null<ConstantInt>( len );
+				Json::Value val;
+				len_val.cast( TypeView::getLongLongTy( false ), val, false );
+			}
+
+			std::size_t len_i = 1;
+
+			if ( auto ci = dyn_cast_or_null<ConstantInt>( len_val.get() ) )
+			{
 				if ( ci->isNegative() )
 				{
 					infoList->add_msg(
@@ -136,21 +135,17 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 
 					if ( !arg.type->is_valid_parameter_type() )
 					{
-						if ( !arg.type->is_complete() )
-						{
-							infoList->add_msg(
-							  MSG_TYPE_ERROR,
-							  fmt( "variable of incomplete type `", arg.type, "` cannot be used as function parameter" ),
-							  child );
-							errs++;
-						}
-						else
+						if ( arg.type->is_complete() )
 						{
 							infoList->add_msg(
 							  MSG_TYPE_ERROR,
 							  fmt( "variable of type `", arg.type, "` cannot be used as function parameter" ),
 							  child );
 							errs++;
+						}
+						else
+						{
+							// maybe this is a forward declaration, wait for a minute
 						}
 					}
 					else if ( arg.type->is<mty::Function>() )

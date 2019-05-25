@@ -270,6 +270,7 @@ public:
 	static bool cast_binary_ptr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool supress_warning = false );
 	static void cast_binary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, bool allow_float = true,
 								  BasicBlock *lhs = nullptr, BasicBlock *rhs = nullptr );
-	static void cast_ternary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node, BasicBlock *lhs, BasicBlock *rhs );
+	static void cast_ternary_expr( QualifiedValue &self, QualifiedValue &other, Json::Value &node,
+								   BasicBlock *lhs = nullptr, BasicBlock *rhs = nullptr );
 	QualifiedValue &cast( const TypeView &dst, Json::Value &node, bool warn = true );
 };

@@ -764,11 +764,24 @@ int Initializer::reg()
 									  {
 										  alloc = glob->value.get();
 										  glob_val = QualifiedValue( ty, alloc, !type.is<mty::Address>() );
-										  globObjects.insert_if(
-											name,
-											Global( glob_val.unwrap(), declspec.has_attribute( SC_STATIC ), init.is_some() ),
-											children[ 0 ],
-											declare_global );
+										  if ( !declspec.has_attribute( SC_STATIC ) )
+										  {
+											  globObjects.insert_if(
+												name,
+												Global( glob_val.unwrap(), false, init.is_some() ),
+												children[ 0 ],
+												declare_global );
+										  }
+										  else
+										  {
+											  globObjects.insert_if(
+												name,
+												Global( glob_val.unwrap(), true, init.is_some() ),
+												children[ 0 ],
+												[]( const std::string &,
+													const Global &, const Global &,
+													Json::Value & ) { return true; } );
+										  }
 									  }
 									  else  // this variable is not declared yet
 									  {

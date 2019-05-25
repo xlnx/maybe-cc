@@ -35,6 +35,29 @@ JumpTable<NodeHandler> handlers = {
 		  }
 
 		  auto fn_type = type.as<mty::Function>();
+		  int errors = 0;
+
+		  for ( auto &arg : fn_type->args )
+		  {
+			  if ( !arg.type->is_valid_parameter_type() )
+			  {
+				  if ( !arg.type->is_complete() )
+				  {
+					  infoList->add_msg(
+						MSG_TYPE_ERROR,
+						fmt( "variable of incomplete type `", arg.type, "` cannot be used as function parameter" ),
+						node );
+					  errors++;
+				  }
+				  else
+				  {
+					  // checked already
+					  INTERNAL_ERROR();
+				  }
+			  }
+		  }
+
+		  if ( errors ) HALT();
 
 		  if ( auto sym = symTable.find_in_scope( name ) )
 		  {

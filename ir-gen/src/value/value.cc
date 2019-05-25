@@ -217,17 +217,17 @@ void QualifiedValue::cast_ternary_expr( QualifiedValue &self, QualifiedValue &ot
 	}
 	else if ( self.type->is<mty::Derefable>() && other.type->is<mty::Integer>() )
 	{
-		Builder.SetInsertPoint( rhsbb );
+		if ( rhsbb ) Builder.SetInsertPoint( rhsbb );
 		other.cast( self.type, node );
 	}
 	else if ( self.type->is<mty::Integer>() && other.type->is<mty::Derefable>() )
 	{
-		Builder.SetInsertPoint( lhsbb );
+		if ( lhsbb ) Builder.SetInsertPoint( lhsbb );
 		self.cast( other.type, node );
 	}
 	else if ( self.type->is<mty::Derefable>() && other.type->is<mty::Derefable>() )
 	{
-		Builder.SetInsertPoint( lhsbb );
+		if ( lhsbb ) Builder.SetInsertPoint( lhsbb );
 		self.cast( other.type, node );
 	}
 	else
