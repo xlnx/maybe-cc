@@ -776,8 +776,6 @@ int Initializer::reg()
 											  }
 										  }
 
-										  std::cout << init.is_some() << std::endl;
-
 										  if ( !declspec.has_attribute( SC_STATIC ) )
 										  {
 											  globObjects.insert_if(
