@@ -9,7 +9,7 @@ if (MSVC)
 	# set(CMAKE_CXX_FLAGS_RELEASE )
 else()
 	set(CMAKE_CXX_FLAGS_DEBUG "-g -pg")
-	set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+	set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pg")
 endif()
 
 enable_language(Rust)
