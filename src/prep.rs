@@ -9,7 +9,7 @@ pub struct PreprocessError {}
 
 impl PreprocessError {
     pub fn as_string(&self) -> String {
-        String::from("asd")
+        String::from("ASD")
     }
     pub fn from() -> Self {
         PreprocessError {}

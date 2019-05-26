@@ -11,11 +11,10 @@ int Statement::reg()
 			  // Ignore the { and }
 			  for ( int i = 1; i < children.size() - 1; i++ )
 			  {
-				  //   if ( curr_bb_has_ret() ) break;
 				  codegen( children[ i ] );
 			  }
 
-			  dbg( symTable );
+			  //   dbg( symTable );
 			  symTable.pop();
 
 			  return VoidType();
@@ -447,7 +446,7 @@ int Statement::reg()
 					  for ( auto &entry : gotoJump[ labelType ] )
 					  {
 						  Builder.SetInsertPoint( entry.first );
-						Builder.CreateBr( label );
+						  Builder.CreateBr( label );
 					  }
 					  gotoJump.erase( labelType );
 				  }

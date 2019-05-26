@@ -9,7 +9,7 @@ if (MSVC)
 	# set(CMAKE_CXX_FLAGS_RELEASE )
 else()
 	set(CMAKE_CXX_FLAGS_DEBUG "-g -pg")
-	set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+	set(CMAKE_CXX_FLAGS_RELEASE "-O3 -pg")
 endif()
 
 enable_language(Rust)
@@ -39,14 +39,14 @@ else()
     target_link_libraries(mcc fe-lib pthread dl)
 endif()
 
-# if (FALSE)
+if (FALSE)
 llvm_map_components_to_libnames(llvm_libs
 LTO Passes ObjCARCOpts WindowsManifest FuzzMutate TextAPI XCoreDisassembler XCoreCodeGen XCoreDesc XCoreInfo XCoreAsmPrinter WebAssemblyDisassembler WebAssemblyCodeGen WebAssemblyDesc WebAssemblyAsmPrinter WebAssemblyAsmParser WebAssemblyInfo SystemZDisassembler SystemZCodeGen SystemZAsmParser SystemZDesc SystemZInfo SystemZAsmPrinter SparcDisassembler SparcCodeGen SparcAsmParser SparcDesc SparcInfo SparcAsmPrinter PowerPCDisassembler PowerPCCodeGen PowerPCAsmParser PowerPCDesc PowerPCInfo PowerPCAsmPrinter NVPTXCodeGen NVPTXDesc NVPTXInfo NVPTXAsmPrinter MSP430Disassembler MSP430CodeGen MSP430AsmParser MSP430Desc MSP430Info MSP430AsmPrinter MipsDisassembler MipsCodeGen MipsAsmParser MipsDesc MipsInfo MipsAsmPrinter LanaiDisassembler LanaiCodeGen LanaiAsmParser LanaiDesc LanaiAsmPrinter LanaiInfo HexagonDisassembler HexagonCodeGen HexagonAsmParser HexagonDesc HexagonInfo BPFDisassembler BPFCodeGen BPFAsmParser BPFDesc BPFInfo BPFAsmPrinter ARMDisassembler ARMCodeGen ARMAsmParser ARMDesc ARMInfo ARMAsmPrinter ARMUtils AMDGPUDisassembler AMDGPUCodeGen AMDGPUAsmParser AMDGPUDesc AMDGPUInfo AMDGPUAsmPrinter AMDGPUUtils AArch64Disassembler AArch64CodeGen AArch64AsmParser AArch64Desc AArch64Info AArch64AsmPrinter AArch64Utils ObjectYAML
 Interpreter TableGen DlltoolDriver OptRemarks XRay OrcJIT MIRParser MCA LineEditor Symbolize DebugInfoPDB DebugInfoDWARF LibDriver Option Coroutines ipo Instrumentation Vectorize Linker IRReader AsmParser Coverage X86Disassembler X86AsmParser MCJIT ExecutionEngine RuntimeDyld X86CodeGen GlobalISel X86Desc X86Info MCDisassembler X86AsmPrinter X86Utils SelectionDAG AsmPrinter CodeGen Target ScalarOpts InstCombine AggressiveInstCombine TransformUtils BitWriter Analysis ProfileData Object MCParser MC DebugInfoCodeView DebugInfoMSF BitReader Core BinaryFormat Support Demangle
 )
-# else ()
-# set(llvm_libs LLVM-8)
-# endif()
+else ()
+set(llvm_libs LLVM-8)
+endif()
 
 target_link_libraries(mcc ir-gen)
 target_link_libraries(mcc ${llvm_libs})

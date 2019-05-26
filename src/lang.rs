@@ -88,7 +88,7 @@ lang! {
 
     ;;
 
-    SOURCE_MAP => r"\n(#[^\n]*)\n" => |tok, ctrl| {
+    SOURCE_MAP => r"(#[^\n]*)\n" => |tok, ctrl| {
         // if let Some(caps) = SOURCE_MAP.captures(tok.val) {
         //     if let (Some(line), Some(file)) = (caps.get(1), caps.get(2)) {
 

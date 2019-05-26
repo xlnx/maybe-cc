@@ -26,7 +26,7 @@ JumpTable<NodeHandler> handlers = {
 		  auto type = decl.type;
 		  auto name = decl.name.unwrap();
 
-		  //  dbg( "in function_definition: ", decl );
+		  dbg( "=== Function ", name, " ===" );
 
 		  if ( !type.is<mty::Function>() )
 		  {
@@ -35,6 +35,51 @@ JumpTable<NodeHandler> handlers = {
 		  }
 
 		  auto fn_type = type.as<mty::Function>();
+		  int errors = 0;
+
+		  for ( auto &arg : fn_type->args )
+		  {
+			  if ( !arg.type->is_valid_parameter_type() )
+			  {
+				  if ( !arg.type->is_complete() )
+				  {
+					  infoList->add_msg(
+						MSG_TYPE_ERROR,
+						fmt( "variable of incomplete type `", arg.type, "` cannot be used as function parameter" ),
+						node );
+					  errors++;
+				  }
+				  else
+				  {
+					  // checked already
+					  INTERNAL_ERROR();
+				  }
+			  }
+		  }
+
+		  if ( errors ) HALT();
+
+		  if ( auto sym = symTable.find_in_scope( name ) )
+		  {
+			  if ( sym->is_type() )
+			  {
+				  infoList->add_msg(
+					MSG_TYPE_ERROR,
+					fmt( "redefination of `", name, "` as different kind of symbol" ),
+					node );
+				  HALT();
+			  }
+			  auto val = sym->as_value();
+			  auto view = TypeView( std::make_shared<QualifiedType>( type ) );
+			  if ( !val.get_type().is_same( view ) )
+			  {
+				  infoList->add_msg(
+					MSG_TYPE_ERROR,
+					fmt( "forward declaration of `", name, "` conflicts" ),
+					node );
+				  HALT();
+			  }
+		  }
 
 		  auto fn = TheModule->getFunction( name );
 
@@ -80,7 +125,7 @@ JumpTable<NodeHandler> handlers = {
 			  auto &name = arg.name.unwrap();
 			  auto alloc = Builder.CreateAlloca( arg.type->type, 0, name );
 			  Builder.CreateStore( fn_arg, alloc );
-			  symTable.insert(
+			  symTable.insert_if(
 				name,
 				QualifiedValue(
 				  std::make_shared<QualifiedType>( arg.type ),
@@ -158,7 +203,7 @@ JumpTable<NodeHandler> handlers = {
 			  INTERNAL_ERROR( fmt( "\nLLVM Verify Function Failed:\n", fn_err ) );
 		  }
 
-		  dbg( symTable );
+		  //   dbg( symTable );
 		  symTable.pop();
 
 		  return VoidType{};
@@ -233,6 +278,7 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	}
 
 	symTable.push();
+	globObjects.push();
 
 	dbg( "building va_list" );
 
@@ -251,11 +297,11 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 				  .build();
 	dbg( type );
 
-	symTable.insert( "__builtin_va_list", type, dummy );
+	symTable.insert_if( "__builtin_va_list", type, dummy );
 
 	dbg( "enter global" );
 
-	StackTrace _;
+	// StackTrace _;
 
 	try
 	{
@@ -266,12 +312,14 @@ char *gen_llvm_ir_cxx( const char *ast_json )
 	}
 	catch ( std::exception &_ )
 	{
-		dbg( symTable );
+		// dbg( symTable );
+		globObjects.pop();
 		symTable.pop();
 		throw;
 	}
 
-	dbg( symTable );
+	// dbg( symTable );
+	globObjects.pop();
 	symTable.pop();
 
 	if ( is_debug_mode )

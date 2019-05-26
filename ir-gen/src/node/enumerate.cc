@@ -64,7 +64,7 @@ int Enumerate::reg()
 								int_ty->type,
 								APInt( 32, 1, true ) ) ) );
 
-						  symTable.insert(
+						  symTable.insert_if(
 							children[ 0 ][ 1 ].asCString(),
 							QualifiedValue(
 							  TypeView( std::make_shared<QualifiedType>( type ) ),

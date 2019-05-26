@@ -23,7 +23,7 @@ struct Integer : Arithmetic
 	{
 		if ( is_const ) os << "const ";
 		if ( is_volatile ) os << "volatile ";
-		if ( !is_signed ) os << "unsigned ";
+		if ( !is_signed & bits != 1 ) os << "unsigned ";
 		switch ( bits )
 		{
 		case 1: os << "bool"; break;

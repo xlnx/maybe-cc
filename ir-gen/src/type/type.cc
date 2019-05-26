@@ -18,7 +18,7 @@ TypeView const &TypeView::getVoidPtrTy()
 }
 TypeView const &TypeView::getBoolTy()
 {
-	static auto s_ty = std::make_shared<QualifiedType>( std::make_shared<mty::Integer>( 1, true ) );
+	static auto s_ty = std::make_shared<QualifiedType>( std::make_shared<mty::Integer>( 1, false ) );
 
 	static auto s_v = TypeView( s_ty );
 
