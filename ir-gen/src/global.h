@@ -78,6 +78,7 @@ extern std::map<std::string, std::vector<std::pair<BasicBlock *, Json::Value>>> 
 extern std::map<std::string, BasicBlock *> labelJump;
 extern std::stack<std::map<ConstantInt *, BasicBlock *>> caseList;
 extern std::stack<std::pair<bool, BasicBlock *>> defaultList;
+extern std::stack<int> switchBits;;
 extern ffi::MsgList *infoList;
 extern ScopedMap<Symbol> symTable;
 extern ScopedMap<Global> globObjects;

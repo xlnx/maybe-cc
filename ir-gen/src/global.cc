@@ -12,6 +12,7 @@ std::map<std::string, std::vector<std::pair<BasicBlock *, Json::Value>>> gotoJum
 std::map<std::string, BasicBlock *> labelJump;
 std::stack<std::map<ConstantInt *, BasicBlock *>> caseList;
 std::stack<std::pair<bool, BasicBlock *>> defaultList;
+std::stack<int> switchBits;
 MsgList *infoList;
 ScopedMap<Symbol> symTable;
 ScopedMap<Global> globObjects;

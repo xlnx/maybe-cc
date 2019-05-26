@@ -318,7 +318,15 @@ int Statement::reg()
 			  {
 				  auto value = get<QualifiedValue>( codegen( children[ 2 ] ) )
 								 .value( children[ 2 ] );
-				  if ( !value.get_type()->is<mty::Integer>() )
+				  auto &valType = value.get_type();
+				  //
+
+				  int bits;
+				  if ( auto intType = valType->as<mty::Integer>() )
+				  {
+					  bits = intType->bits;
+				  }
+				  else
 				  {
 					  infoList->add_msg(
 						MSG_TYPE_ERROR,
@@ -327,11 +335,17 @@ int Statement::reg()
 					  HALT();
 				  }
 
+				  if ( bits < 32 )
+				  {
+					  value.cast( TypeView::getIntTy( true ), children[ 2 ] );
+				  }
+
 				  auto epilog = BasicBlock::Create( TheContext, "sw.epilog", static_cast<Function *>( currentFunction->get() ) );
 				  BasicBlock *defaultCase = nullptr;
 
 				  auto switchIns = Builder.CreateSwitch( value.get(), epilog );
 
+				  switchBits.emplace( bits );
 				  caseList.emplace( std::map<ConstantInt *, BasicBlock *>() );
 				  defaultList.emplace( std::make_pair( false, defaultCase ) );
 				  breakJump.emplace( epilog );
@@ -353,6 +367,7 @@ int Statement::reg()
 				  caseList.pop();
 				  defaultList.pop();
 				  breakJump.pop();
+				  switchBits.pop();
 
 				  Builder.CreateBr( epilog );
 				  Builder.SetInsertPoint( epilog );
@@ -371,6 +386,8 @@ int Statement::reg()
 			  {
 				  auto value = get<QualifiedValue>( codegen( children[ 1 ] ) )
 								 .value( children[ 1 ] );
+				  //  .cast( TypeView::getIntTy( true ), children[ 1 ] );
+
 				  if ( !value.get_type()->is<mty::Integer>() )
 				  {
 					  infoList->add_msg(
@@ -379,6 +396,17 @@ int Statement::reg()
 						node );
 					  HALT();
 				  }
+
+				  int bits = switchBits.top();
+				  if ( bits == 64 )
+				  {
+					  value.cast( TypeView::getLongLongTy( true ), children[ 1 ] );
+				  }
+				  else
+				  {
+					  value.cast( TypeView::getIntTy( true ), children[ 1 ] );
+				  }
+
 				  ConstantInt *cc_val = dyn_cast_or_null<ConstantInt>( value.get() );
 				  if ( !cc_val )
 				  {
