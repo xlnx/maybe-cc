@@ -753,8 +753,8 @@ int Initializer::reg()
 												  HALT();
 											  }
 											  len = array_len;
+											  make_type_len( len );
 										  }
-										  make_type_len( len );
 									  }
 
 									  Option<QualifiedValue> glob_val;

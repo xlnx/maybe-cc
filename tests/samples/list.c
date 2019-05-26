@@ -87,6 +87,11 @@ struct node *reverse_it( struct node *pHead )
 
 int main( int argc, char *argv[] )
 {
+	if (argc < 2)
+	{
+		printf("usage: %s <number>\n", argv[0]);
+		return 1;
+	}
 	int number = atoi( argv[ 1 ] );
 	struct node *pHead = gen( number );
 	display( pHead );

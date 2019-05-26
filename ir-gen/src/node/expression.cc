@@ -1,13 +1,13 @@
 #include "expression.h"
 
-static QualifiedValue size_of_type( const mty::Qualified *type, Json::Value &ast )
+static QualifiedValue size_of_type( const TypeView &type, Json::Value &ast )
 {
 	auto &value_type = TypeView::getLongTy( false );
 	if ( !type->is_complete() )
 	{
 		infoList->add_msg(
 		  MSG_TYPE_ERROR,
-		  fmt( "invalid application of `sizeof` to an incomplete type" ), ast );
+		  fmt( "invalid application of `sizeof` to incomplete type `", type, "`" ), ast );
 		HALT();
 	}
 	auto bytes = type->type->isVoidTy() ? 1 : TheDataLayout->getTypeAllocSize( type->type );
@@ -508,7 +508,7 @@ int Expression::reg()
 						   return val.store( lhs, children[ 1 ], children[ 1 ] );
 					   } },
 					  { "sizeof", []( Json::Value &children, QualifiedValue &val, Json::Value &node ) -> QualifiedValue {
-						   return size_of_type( val.get_type().get(), children[ 1 ] );
+						   return size_of_type( val.get_type(), children[ 1 ] );
 					   } }
 				  };
 
@@ -530,7 +530,9 @@ int Expression::reg()
 			  {
 				  // sizeof ( TYPE )
 				  auto type = get<QualifiedType>( codegen( children[ 2 ] ) );
-				  return size_of_type( type.as<mty::Qualified>(), children[ 2 ] );
+				  return size_of_type(
+				    TypeView( std::make_shared<QualifiedType>( type ) ),
+					  children[ 2 ] );
 			  }
 		  } ) },
 		{ "postfix_expression", pack_fn<VoidType, QualifiedValue>( []( Json::Value &node, VoidType const & ) -> QualifiedValue {
