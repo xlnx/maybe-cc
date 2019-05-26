@@ -232,17 +232,20 @@ void QualifiedValue::cast_ternary_expr( QualifiedValue &self, QualifiedValue &ot
 	}
 	else
 	{
-		infoList->add_msg(
-		  MSG_TYPE_ERROR,
-		  fmt( "incompatible operand types (`", self.type, "` and `", other.type, "`)" ),
-		  node );
-		HALT();
+		if (!self.type.is_same_discard_qualifiers(other.type))
+		{
+			infoList->add_msg(
+			  MSG_TYPE_ERROR,
+			  fmt( "incompatible operand types (`", self.type, "` and `", other.type, "`)" ),
+			  node );
+			HALT();
+		}
 	}
 }
 
 QualifiedValue &QualifiedValue::cast( const TypeView &dst, Json::Value &node, bool warn )
 {
-	// dbg( "CAST ", sharp( type ), " ===> ", sharp( dst ) );
+	dbg( "CAST ", sharp( type ), " ===> ", sharp( dst ) );
 
 	if ( this->is_lvalue )
 	{

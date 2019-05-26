@@ -137,12 +137,19 @@ lang! {
             TYPE_SET.borrow_mut().pop();
         }
     ],
+    string_literal => [
+        STRING_LITERAL |@flatten|,
+        string_literal STRING_LITERAL |@flatten|
+    ],
+    string_literal_i => [
+        string_literal
+    ],
     primary_expression => [
         IDENTIFIER,
         INTEGER,
         CHAR,
         FLOATING_POINT,
-        STRING_LITERAL,
+        string_literal_i,
         "(" expression ")"
     ],
     postfix_expression => [
