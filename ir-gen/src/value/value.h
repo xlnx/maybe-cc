@@ -124,6 +124,11 @@ public:
 			INTERNAL_ERROR();
 		}
 
+		if (this->type->is<mty::Array>())
+		{
+			this->is_lvalue = false;
+		}
+
 		return *this;
 	}
 	QualifiedValue &value( Json::Value &ast )  // cast to rvalue

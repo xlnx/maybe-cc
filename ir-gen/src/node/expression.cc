@@ -645,11 +645,11 @@ int Expression::reg()
 			  else
 			  {  // deal with Identifer | Literal
 				  auto &child = children[ 0 ];
-				  auto val = child[ 1 ].asCString();
-				  auto type = child[ 0 ].asCString();
+				  auto type = child.isArray() ? child[ 0 ].asCString() : child["type"].asCString();
 
-				  static JumpTable<QualifiedValue( const char *, Json::Value & )> __ = {
-					  { "IDENTIFIER", []( const char *val, Json::Value &node ) -> QualifiedValue {
+				  static JumpTable<QualifiedValue( Json::Value & )> __ = {
+																						 { "IDENTIFIER", []( Json::Value &node ) -> QualifiedValue {
+						   auto val = node[1].asCString();
 						   if ( auto sym = symTable.find( val ) )
 						   {
 							   if ( sym->is_value() )
@@ -667,7 +667,8 @@ int Expression::reg()
 							   HALT();
 						   }
 					   } },
-					  { "INTEGER", []( const char *val, Json::Value &node ) -> QualifiedValue {
+					  { "INTEGER", []( Json::Value &node ) -> QualifiedValue {
+						   auto val = node[1].asCString();
 						   auto num = std::strtoll( val, nullptr, 0 );
 						   bool is_signed = true;
 						   bool is_long = false;
@@ -687,7 +688,8 @@ int Expression::reg()
 						   return QualifiedValue( type, Constant::getIntegerValue(
 														  type->type, APInt( type->as<mty::Integer>()->bits, num, is_signed ) ) );
 					   } },
-					  { "FLOATING_POINT", []( const char *val, Json::Value &node ) -> QualifiedValue {
+					  { "FLOATING_POINT", []( Json::Value &node ) -> QualifiedValue {
+						   auto val = node[1].asCString();
 						   auto num = std::strtold( val, nullptr );
 						   int is_double = 0;
 
@@ -708,7 +710,8 @@ int Expression::reg()
 
 						   return QualifiedValue( type, ConstantFP::get( type->type, num ) );
 					   } },
-					  { "CHAR", []( const char *val, Json::Value &node ) -> QualifiedValue {
+					  { "CHAR", []( Json::Value &node ) -> QualifiedValue {
+						   auto val = node[1].asCString();
 						   std::string esc_str = val;
 						   esc_str = esc_str.substr( esc_str.find_first_of( '\'' ) + 1, esc_str.length() - 2 );
 
@@ -800,9 +803,16 @@ int Expression::reg()
 							 Constant::getIntegerValue( type->type, APInt( 8, esc_str[ 0 ], true ) ),
 							 false );
 					   } },
-					  { "STRING_LITERAL", []( const char *val, Json::Value &node ) -> QualifiedValue {
-						   std::string esc_str = val;
-						   esc_str = esc_str.substr( esc_str.find_first_of( '"' ) + 1, esc_str.length() - 2 );
+					  { "string_literal_i", []( Json::Value &node ) -> QualifiedValue {
+						   auto children = node["children"];
+						   std::string esc_str;
+
+						   for (int i = 0; i != children.size(); ++i)
+						   {
+							   auto &child = children[i];
+							   auto sep = child[1].asString();
+							   esc_str += sep.substr( sep.find_first_of( '"' ) + 1, sep.length() - 2 );
+						   }
 
 						   auto wit = esc_str.begin();
 						   for ( auto rit = esc_str.begin(); rit != esc_str.end(); ++rit, ++wit )
@@ -903,7 +913,7 @@ int Expression::reg()
 
 				  if ( __.find( type ) != __.end() )
 				  {
-					  return __[ type ]( val, child );
+					  return __[ type ]( child );
 				  }
 				  else
 				  {

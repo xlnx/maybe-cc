@@ -156,7 +156,7 @@ static QualifiedDecl handle_function_array( Json::Value &node, QualifiedTypeBuil
 									 .add_level( std::make_shared<mty::Pointer>( arg.type->type ) )
 									 .build();
 					}
-					else if ( arg.type->is<mty::Array>() && !arg.type->is_complete() )
+					else if ( arg.type->is<mty::Array>() )
 					{
 						auto builder = DeclarationSpecifiers()
 										 .add_type( TypeView(

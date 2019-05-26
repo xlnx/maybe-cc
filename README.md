@@ -13,7 +13,7 @@ Before build, please make sure:
 Clone this repo with dependencies initialized:
 
 ```bash
-$ git clone --recursive https://github.com/xlnx/myrpg.git
+$ git clone --recursive https://github.com/xlnx/maybe-cc.git
 ```
 
 Run cargo build commands over the repo:
