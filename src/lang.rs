@@ -88,23 +88,25 @@ lang! {
 
     ;;
 
-    SOURCE_MAP => r"(#[^\n]*)\n" => |tok, ctrl| {
-        // if let Some(caps) = SOURCE_MAP.captures(tok.val) {
-        //     if let (Some(line), Some(file)) = (caps.get(1), caps.get(2)) {
+    SOURCE_MAP => r"(#[^\n]*\n)" => |tok, ctrl| {
+        if let Some(caps) = SOURCE_MAP.captures(tok.val) {
+            if let (Some(line), Some(file)) = (caps.get(1), caps.get(2)) {
 
-        //         if let Some(flags) = caps.get(3) {
-        //             let flags = flags.as_str().trim();
-        //             let flags: Vec<_> = if flags.len() > 0 {
-        //                 flags.split(" ").collect()
-        //             } else {
-        //                 vec![]
-        //             };
-        //         }
+                if let Some(flags) = caps.get(3) {
+                    let flags = flags.as_str().trim();
+                    let flags: Vec<_> = if flags.len() > 0 {
+                        flags.split(" ").collect()
+                    } else {
+                        vec![]
+                    };
+                }
 
-        //         ctrl.set_source_file(file.as_str())
-        //             .set_location((line.as_str().parse::<isize>().unwrap() - 2, 0));
-        //     }
-        // }
+                ctrl.set_location(
+                    file.as_str(), 
+                    (line.as_str().parse::<usize>().unwrap() - 1, 0)
+                );
+            }
+        }
         ctrl.discard();
     },
     TYPE_NAME => r"$^$^",

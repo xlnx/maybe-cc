@@ -183,15 +183,12 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
             .value_of("output")
             .unwrap_or(default_out_file.as_str());
 
-        let contents = String::from("\n")
-            + preprocessor
+        let contents = preprocessor
                 .parse(in_file, &mut logger)
-                .unwrap_or_else(error_exit!())
-                .as_str()
-            + "\n";
+                .unwrap_or_else(error_exit!());
 
         /* parsing */
-        let ast = parser
+        let (ast, source_map) = parser
             .parse(contents.as_str(), &mut logger)
             .unwrap_or_else(error_exit!());
 
@@ -207,7 +204,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
         /* ir-generation */
         let ir = ir_gen(&ast).unwrap_or_else(error_exit!());
 
-        if !msg.log(&contents, &mut logger) {
+        if !msg.log(&contents, &mut logger, &source_map) {
             error_exit!()(());
         }
         unsafe {
@@ -228,7 +225,7 @@ fn main_rs(args: Vec<&str>) -> Result<(), std::io::Error> {
         let irc_val = unsafe { irc_into_obj(CString::new(obj_out.as_str()).unwrap().as_ptr()) };
         objs.push(obj_out);
 
-        if !msg.log(&contents, &mut logger) || irc_val != 0 {
+        if !msg.log(&contents, &mut logger, &source_map) || irc_val != 0 {
             error_exit!()(());
         }
         unsafe {

@@ -133,7 +133,7 @@ impl LexerProvider for CLexer {
             'a'..='z' | 'A'..='Z' | '_' => Some(self.trie_get(input)),
             '#' => Some((
                 into_symbol("SOURCE_MAP"),
-                input.find('\n').unwrap_or(input.len()),
+                input.find('\n').map_or(input.len(), |x| x+1),
             )),
             '0'..='9' | '\'' | '"' => self.delegate.emit(input),
             '.' => {

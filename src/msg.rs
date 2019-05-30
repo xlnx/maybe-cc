@@ -21,20 +21,8 @@ pub struct MsgList {
     pub cap: usize,
 }
 
-fn find_line(text: &String, line: usize) -> &str {
-    let mut ln = text.as_str();
-    for i in 0..line {
-        if let Some(pos) = ln.find(|c: char| c == '\n') {
-            ln = &ln[(pos + 1)..];
-        } else {
-            return ln;
-        }
-    }
-    ln
-}
-
 impl MsgList {
-    pub fn log(&self, text: &String, logger: &mut Logger) -> bool {
+    pub fn log(&self, text: &String, logger: &mut Logger, source_map: &Vec<SourceFileMark>) -> bool {
         let mut error = false;
         for i in 0..self.len {
             unsafe {
@@ -50,11 +38,13 @@ impl MsgList {
                         e @ _ => panic!(format!("unknown severity type: {}", e)),
                     },
                     location: if msg_chunk.has_loc != 0 {
+                        let from = (msg_chunk.pos[0], msg_chunk.pos[1]);
+                        let to = (msg_chunk.pos[2], msg_chunk.pos[3]);
+                        let (provider, from, to) = source_map
+                            .map_error(&from, &to)
+                            .unwrap();
                         Some(SourceFileLocation {
-                            name: "<from-ir-generation>".into(),
-                            line: find_line(text, msg_chunk.pos[0]),
-                            from: (msg_chunk.pos[0], msg_chunk.pos[1]),
-                            to: (msg_chunk.pos[2], msg_chunk.pos[3]),
+                            provider, from, to,
                         })
                     } else {
                         None
