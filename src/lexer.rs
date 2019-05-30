@@ -143,7 +143,6 @@ impl LexerProvider for CLexer {
                     (Some('0'..='9'), _) => self.delegate.emit(input),
                     (Some('.'), Some('.')) => Some((into_symbol_lit("..."), 3)),
                     _ => Some((into_symbol_lit("."), 1)),
-                    (None, _) => None,
                 }
             }
             _ => self.sym_get(input),

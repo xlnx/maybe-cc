@@ -19,10 +19,7 @@ $ git clone --recursive https://github.com/xlnx/maybe-cc.git
 Run cargo build commands over the repo:
 
 ```bash
-$ cd myrpg
-$ cargo build    # must be a nightly build
-$ cargo run -- test.c
-$ # cargo run -- test.c -o /tmp/wtf.ast.json -t=ast
-$ # cargo run -- test.c -o /tmp/wtf.ii -t=ir
-$ # cargo run -- --help
+$ cd maybe-cc
+$ cmake . -Bbuild
+$ cmake --build build
 ```

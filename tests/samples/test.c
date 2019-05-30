@@ -246,14 +246,14 @@ static void create_objects(void)
     }
     cJSON_Delete(root);
 
-    root = cJSON_CreateObject();
+    /*root = cJSON_CreateObject();
     cJSON_AddNumberToObject(root, "number", 1.0 / zero);
 
     if (print_preallocated(root) != 0) {
         cJSON_Delete(root);
         exit(EXIT_FAILURE);
     }
-    cJSON_Delete(root);
+    cJSON_Delete(root);*/
 }
 
 int CJSON_CDECL main(void)
